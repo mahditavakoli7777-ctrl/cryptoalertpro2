@@ -1,0 +1,2625 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CryptoAlert</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CryptoAlert">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144x144.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96x96.png">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- FIX #1: correct LightweightCharts CDN -->
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Vazirmatn:wght@300;400;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── THEME VARIABLES ── */
+  :root {
+    --bg: #000;
+    --surface: #111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --border2: #3a3a3a;
+    --white: #fff;
+    --text: #fff;
+    --off-white: #e0e0e0;
+    --muted: #666;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --yellow: #f59e0b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Vazirmatn', sans-serif;
+    --chart-bg: #111111;
+    --chart-text: #666;
+    --chart-grid: #1a1a1a;
+    --chart-border: #2a2a2a;
+  }
+  html.light {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface2: #f0f1f3;
+    --border: #e0e2e7;
+    --border2: #c8ccd4;
+    --white: #111;
+    --text: #111;
+    --off-white: #333;
+    --muted: #888;
+    --chart-bg: #ffffff;
+    --chart-text: #888;
+    --chart-grid: #eeeeee;
+    --chart-border: #dddddd;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; transition: background 0.2s, color 0.2s; }
+
+  .header {
+    background: #000; border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100; gap: 10px;
+    direction: ltr;
+  }
+  html[dir="rtl"] .header { flex-direction: row-reverse; direction: ltr; }
+  html[dir="rtl"] .header-actions { flex-direction: row-reverse; }
+  html.light .header { background: #fff; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--text); flex-shrink: 0; direction: ltr; }
+  .logo-icon { width: 28px; height: 28px; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .header-bell-box { width: 36px; height: 36px; background: #111; border: 1px solid #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  html.light .header-bell-box { background: #f0f1f3; border-color: #ccc; }
+  html.light .header-bell-box svg { fill: #111; }
+  .header-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; direction: ltr; }
+
+  #api-status { font-size: 9px; padding: 2px 6px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; border: 1px solid transparent; font-family: var(--mono); white-space: nowrap; display: inline-block; }
+  #api-status.ok { background: rgba(34,197,94,0.12); color: var(--green); border-color: rgba(34,197,94,0.3); }
+  #api-status.err { background: rgba(239,68,68,0.12); color: var(--red); border-color: rgba(239,68,68,0.3); }
+  #api-status.loading { background: rgba(128,128,128,0.1); color: var(--muted); border-color: var(--border2); }
+
+  /* Theme SVG icon - white in dark, black in light */
+  .theme-svg-icon {
+    display: block; width: 16px; height: 16px;
+    background-color: #fff;
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  html.light .theme-svg-icon { background-color: #000; }
+  /* Moon icon (shown in dark mode — click to switch to light) */
+  .theme-svg-icon.moon {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z'/%3E%3C/svg%3E");
+  }
+  /* Sun icon (shown in light mode — click to switch to dark) */
+  .theme-svg-icon.sun {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cline x1='12' y1='1' x2='12' y2='3' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='12' y1='21' x2='12' y2='23' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='4.22' y1='4.22' x2='5.64' y2='5.64' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='18.36' y1='18.36' x2='19.78' y2='19.78' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='1' y1='12' x2='3' y2='12' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='21' y1='12' x2='23' y2='12' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='4.22' y1='19.78' x2='5.64' y2='18.36' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='18.36' y1='5.64' x2='19.78' y2='4.22' stroke='currentColor' stroke-width='2'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cline x1='12' y1='1' x2='12' y2='3' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='12' y1='21' x2='12' y2='23' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='4.22' y1='4.22' x2='5.64' y2='5.64' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='18.36' y1='18.36' x2='19.78' y2='19.78' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='1' y1='12' x2='3' y2='12' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='21' y1='12' x2='23' y2='12' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='4.22' y1='19.78' x2='5.64' y2='18.36' stroke='currentColor' stroke-width='2'/%3E%3Cline x1='18.36' y1='5.64' x2='19.78' y2='4.22' stroke='currentColor' stroke-width='2'/%3E%3C/svg%3E");
+  }
+
+  #line-tooltip { display: none; } /* orange tooltip hidden - no content needed */
+  .btn-icon {
+    background: transparent; border: 1px solid var(--border2); color: var(--text);
+    width: 32px; height: 32px; padding: 0; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+    filter: none;
+  }
+  /* Force icons to be white in dark, dark in light */
+  .header .btn-icon { color: #fff; border-color: #333; }
+  html.light .header .btn-icon { color: #111; border-color: #ccc; }
+  .btn-icon:hover { opacity: 0.75; }
+  /* Override emoji rendering to be monochrome-ish */
+  #theme-btn, #settings-btn { font-size: 16px; }
+  .btn-toggle-label { font-size: 10px; font-weight: 700; font-family: var(--mono); }
+
+  .container { padding: 16px; padding-bottom: 90px; max-width: 780px; margin: 0 auto; }
+
+  /* Chart coin dropdown */
+  .chart-coin-wrap { position: relative; flex-shrink: 0; }
+  .chart-coin-btn {
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px;
+    color: var(--text); padding: 7px 12px; font-size: 13px; font-family: var(--sans);
+    cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    min-width: 110px; justify-content: space-between;
+  }
+  .chart-coin-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border2); border-radius: 10px;
+    max-height: 260px; overflow-y: auto; z-index: 50;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4); min-width: 200px;
+  }
+  .chart-coin-dropdown.open { display: block; }
+  .chart-coin-search {
+    width: 100%; padding: 9px 14px; background: var(--surface2); border: none;
+    border-bottom: 1px solid var(--border); color: var(--text); font-size: 13px;
+    font-family: var(--sans); outline: none; border-radius: 10px 10px 0 0;
+  }
+  .chart-coin-search::placeholder { color: var(--muted); }
+
+  /* ── CHART SECTION ── */
+  .chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .chart-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .chart-coin-select {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; color: var(--text); padding: 7px 12px;
+    font-size: 13px; font-family: var(--sans); outline: none;
+    cursor: pointer; flex-shrink: 0; max-width: 160px;
+  }
+  .tf-group { display: flex; gap: 4px; flex-shrink: 0; }
+  .tf-btn {
+    background: transparent; border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--muted); padding: 5px 9px;
+    font-size: 11px; font-family: var(--mono); cursor: pointer;
+    font-weight: 600; transition: all 0.15s;
+  }
+  .tf-btn:hover { color: var(--text); border-color: var(--muted); }
+  .tf-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .chart-price-info {
+    margin-right: auto; display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 13px;
+  }
+  .chart-current-price { color: var(--text); font-weight: 600; font-size: 15px; }
+  .chart-price-change { font-size: 12px; }
+  .chart-price-change.pos { color: var(--green); }
+  .chart-price-change.neg { color: var(--red); }
+
+  #chart-container {
+    position: relative;
+    height: 340px;
+    cursor: crosshair;
+  }
+
+  #draw-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: none; }
+  #line-tooltip { display: none !important; }
+
+  /* FIX #2: "Set Alert" pill — constrained inside chart */
+  #set-alert-pill {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    background: #fff;
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--sans);
+    padding: 8px 18px;
+    border-radius: 24px;
+    border: none;
+    cursor: pointer;
+    display: none;
+    z-index: 30;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: pop-in 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html.light #set-alert-pill { background: #000; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+  #set-alert-pill:hover { opacity: 0.9; }
+  @keyframes pop-in { from{opacity:0;transform:translateX(-50%) scale(0.8)} to{opacity:1;transform:translateX(-50%) scale(1)} }
+
+  /* Footer bar */
+  .footer-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+    background: #000; border-top: 1px solid #222;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; gap: 8px;
+  }
+  html.light .footer-bar { background: #fff; border-top-color: #e0e0e0; }
+  .footer-bar .btn-icon { color: #fff; border-color: #333; width: 36px; height: 36px; font-size: 15px; }
+  html.light .footer-bar .btn-icon { color: #111; border-color: #ccc; }
+  #email-banner-footer {
+    background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px; padding: 10px 14px; margin: 0 10px 80px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-size: 12px; color: #93c5fd;
+  }
+  #email-banner-footer.configured { background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.2); color: var(--green); }
+
+  .chart-hint {
+    padding: 10px 16px 12px; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+  }
+  .hint-key {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 2px 6px; font-family: var(--mono);
+    font-size: 10px; color: var(--off-white);
+  }
+
+  /* ── LIVE TICKER ── */
+  .live-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 16px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap; overflow-x: auto;
+  }
+  .live-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .live-item { display: flex; flex-direction: column; gap: 2px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.15s; }
+  .live-item:hover { background: var(--surface2); }
+  .live-pair { font-size: 10px; color: var(--muted); }
+  .live-price { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); transition: color 0.3s; }
+  .live-price.flash-green { color: var(--green); }
+  .live-price.flash-red { color: var(--red); }
+  .pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+  .pulse.err { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── STATS ── */
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+
+  /* ── ALERTS LIST ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .alerts-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+
+  .alert-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: border-color 0.2s; }
+  .alert-card:hover { border-color: var(--border2); }
+  .alert-card.triggered-below { border-color: rgba(34,197,94,0.4); }
+  .alert-card.triggered-above { border-color: rgba(239,68,68,0.4); }
+
+  .alert-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; }
+  .alert-pair { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; color: var(--text); }
+  .pair-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; background: var(--surface2); color: var(--text); border: 1px solid var(--border2); overflow: hidden; }
+  .pair-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+  .badge { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; border: 1px solid transparent; }
+  .badge.active { background: rgba(128,128,128,0.1); color: var(--off-white); border-color: var(--border2); }
+  .badge.trig-above { background: rgba(239,68,68,0.12); color: var(--red); border-color: rgba(239,68,68,0.3); animation: badge-glow-red 2s ease-in-out 3; }
+  .badge.trig-below { background: rgba(34,197,94,0.12); color: var(--green); border-color: rgba(34,197,94,0.3); animation: badge-glow 2s ease-in-out 3; }
+  @keyframes badge-glow { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6)} 50%{box-shadow:0 0 8px 3px rgba(34,197,94,0.25)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+  @keyframes badge-glow-red { 0%{box-shadow:0 0 0 0 rgba(239,68,68,0.6)} 50%{box-shadow:0 0 8px 3px rgba(239,68,68,0.25)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
+
+  .alert-body { padding: 0 16px 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .price-block { background: var(--surface2); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border); }
+  .price-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .price-value { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text); }
+  .price-diff { font-family: var(--mono); font-size: 11px; margin-top: 3px; }
+  .price-diff.pos { color: var(--green); }
+  .price-diff.neg { color: var(--red); }
+  .alert-direction { padding: 4px 16px 8px; font-size: 11px; color: var(--muted); }
+  .alert-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 12px; border-top: 1px solid var(--border); }
+  .alert-time { font-size: 11px; color: var(--muted); }
+  .alert-actions { display: flex; gap: 6px; }
+
+  /* ── BUTTONS ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 34px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; font-family: var(--sans); white-space: nowrap; }
+  .btn-primary { background: var(--text); color: var(--bg); }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 7px; font-weight: 600; height: auto; }
+  .btn-blue { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .btn-blue:hover { background: rgba(59,130,246,0.25); }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 18px; padding: 24px; width: 400px; max-width: calc(100vw - 32px); max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.2s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px; }
+  .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; color: var(--text); padding: 10px 14px; font-size: 14px; font-family: var(--mono); outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--muted); }
+  .form-select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; color: var(--text); padding: 10px 14px; font-size: 14px; font-family: var(--sans); outline: none; cursor: pointer; appearance: none; }
+  .form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .form-hint a { color: #93c5fd; text-decoration: none; }
+
+  .direction-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dir-btn { padding: 10px; border-radius: 10px; border: 1px solid var(--border2); background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 700; text-align: center; transition: all 0.15s; font-family: var(--sans); }
+  .dir-btn.sel-above { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.5); color: var(--green); }
+  .dir-btn.sel-below { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.5); color: var(--red); }
+
+  .email-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .email-section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; margin-bottom: 12px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .toggle-label { font-size: 13px; color: var(--off-white); }
+  .toggle-sublabel { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle { width: 40px; height: 22px; background: var(--border2); border-radius: 11px; position: relative; cursor: pointer; transition: background 0.2s; border: none; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; right: 3px; transition: transform 0.2s; }
+  .toggle.on { background: var(--green); }
+  .toggle.on::after { transform: translateX(-18px); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .modal-actions .btn { flex: 1; justify-content: center; }
+
+  /* coin search in modal */
+  .coin-search-wrap { position: relative; margin-bottom: 6px; }
+  .coin-search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; color: var(--text); padding: 8px 14px; font-size: 13px; font-family: var(--sans); outline: none; }
+  .coin-search-input:focus { border-color: var(--muted); }
+  .coin-search-input::placeholder { color: var(--muted); }
+  .coin-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 50; margin-top: 4px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .coin-dropdown.open { display: block; }
+  .coin-option { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; font-size: 13px; color: var(--text); transition: background 0.1s; }
+  .coin-option:hover { background: var(--surface2); }
+  .coin-option-icon { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
+  .coin-option-rank { font-size: 10px; color: var(--muted); font-family: var(--mono); min-width: 28px; }
+  .coin-option-name { flex: 1; }
+  .coin-option-sym { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  /* ── EMPTY ── */
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-text { font-size: 15px; margin-bottom: 6px; color: var(--off-white); }
+  .empty-sub { font-size: 13px; }
+
+  /* ── TOAST ── */
+  #toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  .toast { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 11px 20px; font-size: 13px; color: var(--off-white); box-shadow: 0 8px 40px rgba(0,0,0,0.4); animation: slide-up 0.2s ease; white-space: nowrap; }
+  .toast.success { border-color: rgba(34,197,94,0.4); color: var(--green); }
+  .toast.error { border-color: rgba(239,68,68,0.4); color: var(--red); }
+  .toast.alert { border-color: rgba(255,255,255,0.3); color: var(--text); }
+  .toast.info { border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+  @keyframes slide-up { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── EMAIL BANNER ── */
+  #email-banner { background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #93c5fd; }
+  #email-banner.configured { background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.2); color: var(--green); }
+
+  /* Chart loading */
+  .chart-loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; font-family: var(--mono); background: var(--chart-bg); z-index: 5;
+  }
+
+  /* coins loading indicator */
+  .coins-loading { font-size: 11px; color: var(--muted); padding: 4px 0; font-family: var(--mono); }
+  .chart-spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── NOTIF CHANNELS MODAL ── */
+  .notif-modal { max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .notif-channel {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .notif-channel.configured { border-color: rgba(34,197,94,0.4); }
+  .notif-channel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .notif-channel-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .notif-channel-status { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 700; border: 1px solid transparent; font-family: var(--mono); }
+  .notif-channel-status.ok { background: rgba(34,197,94,0.12); color: var(--green); border-color: rgba(34,197,94,0.3); }
+  .notif-channel-status.off { background: rgba(128,128,128,0.1); color: var(--muted); border-color: var(--border2); }
+  .notif-channel-fields { display: flex; flex-direction: column; gap: 8px; }
+  .notif-channel-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+  /* ── ALERT NOTIF CHECKBOXES ── */
+  .alert-notif-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 16px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .notif-label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .notif-checkbox { width: 14px; height: 14px; accent-color: var(--blue); cursor: pointer; }
+
+  @media(max-width:500px) {
+    .container { padding: 10px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .stats-row .stat-card:last-child { grid-column: 1/-1; }
+    .alert-body { grid-template-columns: 1fr; }
+    #chart-container { height: 260px; }
+    .chart-price-info { display: none; }
+    .header { padding: 8px 12px; }
+    .logo-icon { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+    </div>
+    <div class="header-bell-box">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+    </div>
+    <span>Crypto Alert</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" id="lang-btn" onclick="toggleLang()" title="زبان">
+      <span class="btn-toggle-label" id="lang-label">EN</span>
+    </button>
+    <button class="btn-icon" id="theme-btn" onclick="toggleTheme()" title="تم">
+      <span id="theme-icon" class="theme-svg-icon moon"></span>
+    </button>
+    <button class="btn-icon" id="notif-channels-btn" onclick="openNotifChannels()" title="کانال‌های اطلاع‌رسانی" style="position:relative">
+      🔔<span id="notif-active-dot" style="display:none;position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--green);"></span>
+    </button>
+    <button class="btn btn-primary" id="add-btn">+ <span data-i18n="newAlert">هشدار</span></button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Chart title above section -->
+  <div style="font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.3px;padding:4px 0 10px;text-align:center;">Chart</div>
+
+  <!-- ── CHART ── -->
+  <div class="chart-section">
+    <div class="chart-toolbar">
+      <!-- Coin dropdown -->
+      <div class="chart-coin-wrap" id="chart-coin-wrap">
+        <button class="chart-coin-btn" id="chart-coin-btn" onclick="toggleChartCoinDropdown()">
+          <span id="chart-coin-label">₿ BTC</span>
+          <span style="font-size:10px;opacity:0.5">▼</span>
+        </button>
+        <div class="chart-coin-dropdown" id="chart-coin-dropdown">
+          <input class="chart-coin-search" id="chart-coin-search" placeholder="جستجو..." oninput="filterChartCoins()" />
+          <div id="chart-coin-list"></div>
+        </div>
+      </div>
+      <div class="tf-group">
+        <button class="tf-btn active" onclick="setTimeframe('15m')" id="tf-15m" data-i18n="tf15m">۱۵م</button>
+        <button class="tf-btn" onclick="setTimeframe('1h')" id="tf-1h" data-i18n="tf1h">۱س</button>
+        <button class="tf-btn" onclick="setTimeframe('4h')" id="tf-4h" data-i18n="tf4h">۴س</button>
+        <button class="tf-btn" onclick="setTimeframe('1d')" id="tf-1d" data-i18n="tf1d">روز</button>
+      </div>
+      <div class="chart-price-info">
+        <span class="chart-current-price" id="chart-cur-price">—</span>
+        <span class="chart-price-change" id="chart-change">—</span>
+      </div>
+    </div>
+
+    <div id="chart-container">
+      <div class="chart-loading" id="chart-loading">در حال بارگذاری چارت...</div>
+      <div id="lwc-mount" style="width:100%;height:100%;position:absolute;inset:0;"></div>
+      <canvas id="draw-overlay"></canvas>
+      <div id="line-tooltip"></div>
+      <button id="set-alert-pill" onclick="confirmLineAlert()">🔔 <span data-i18n="setAlertAt">ست آلرت در این قیمت</span></button>
+    </div>
+
+    <!-- Set Alert button below chart instead of hint text -->
+    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="openModal(null)" data-i18n="setAlertBtn">+ ست آلرت</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:11px;color:var(--muted)" data-i18n="priceSource">منبع قیمت:</span>
+        <select id="price-source-select" onchange="setPriceSource(this.value)" style="
+          background:var(--surface2);border:1px solid var(--border);color:var(--text);
+          border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;outline:none;
+          font-family:inherit;
+        ">
+          <option value="auto">🔄 Auto</option>
+          <option value="binance">Binance</option>
+          <option value="cryptocompare">CryptoCompare</option>
+          <option value="bybit">Bybit</option>
+          <option value="kucoin">KuCoin</option>
+          <option value="okx">OKX</option>
+          <option value="gateio">Gate.io</option>
+          <option value="mexc">MEXC</option>
+          <option value="coincap">CoinCap</option>
+          <option value="coingecko">CoinGecko</option>
+          <option value="nobitex">نوبیتکس</option>
+          <option value="wallex">والکس</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live ticker -->
+  <div class="live-row" id="live-row">
+    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+      <span class="live-label"><span data-i18n="live">زنده</span> <span class="pulse" id="pulse-dot"></span></span>
+      <span id="api-status" class="loading">...</span>
+    </div>
+    <div id="live-prices" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label" data-i18n="total">کل</div><div class="stat-value" id="stat-total">0</div></div>
+    <div class="stat-card"><div class="stat-label" data-i18n="active">فعال</div><div class="stat-value" id="stat-active">0</div></div>
+    <div class="stat-card"><div class="stat-label" data-i18n="triggered">فعال‌شده</div><div class="stat-value" id="stat-triggered">0</div></div>
+  </div>
+
+  <!-- Alerts list -->
+  <div class="section-header">
+    <div class="section-title" id="alerts-count">هشدارها</div>
+  </div>
+  <div class="alerts-list" id="alerts-list"></div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">هشدار جدید</div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="currency">ارز</label>
+      <!-- FIX #3: searchable coin input -->
+      <div class="coin-search-wrap">
+        <input class="coin-search-input" id="coin-search-input" placeholder="جستجو: BTC, ETH, SOL..." autocomplete="off" oninput="filterCoins()" onfocus="openCoinDropdown()" />
+        <div class="coin-dropdown" id="coin-dropdown"></div>
+      </div>
+      <input type="hidden" id="m-pair" value="bitcoin" />
+      <div class="form-hint" id="pair-preview" style="min-height:14px;margin-top:5px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="alertDir">جهت هشدار</label>
+      <div class="direction-toggle">
+        <button class="dir-btn sel-above" id="dir-above" onclick="selectDir('above')" data-i18n="above">↑ بالاتر از</button>
+        <button class="dir-btn" id="dir-below" onclick="selectDir('below')" data-i18n="below">↓ پایین‌تر از</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="targetPrice">قیمت هدف (USDT)</label>
+      <input class="form-input" type="number" id="m-price" placeholder="مثلاً: 65000" step="any" />
+    </div>
+    <div class="email-section">
+      <div class="email-section-title">🔔 <span data-i18n="notifChannels">کانال‌های اطلاع‌رسانی</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="notifChannelsHint">انتخاب کن از کدوم کانال‌ها اطلاع بگیری</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+
+        <div class="toggle-row" onclick="toggleAlertNotif('browser')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🖥️</span>
+            <div>
+              <div class="toggle-label" data-i18n="notifBrowser">نوتیف مرورگر</div>
+              <div class="toggle-sublabel" id="chk-browser-sub">داخل مرورگر</div>
+            </div>
+          </div>
+          <button class="toggle" id="chk-browser"></button>
+        </div>
+
+        <div class="toggle-row" onclick="toggleAlertNotif('email')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">📧</span>
+            <div>
+              <div class="toggle-label" data-i18n="notifEmail">ایمیل</div>
+              <div class="toggle-sublabel" id="chk-email-sub">نیاز به تنظیم</div>
+            </div>
+          </div>
+          <button class="toggle" id="chk-email"></button>
+        </div>
+
+        <div class="toggle-row" onclick="toggleAlertNotif('telegram')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">✈️</span>
+            <div>
+              <div class="toggle-label">Telegram</div>
+              <div class="toggle-sublabel" id="chk-tg-sub">نیاز به تنظیم</div>
+            </div>
+          </div>
+          <button class="toggle" id="chk-telegram"></button>
+        </div>
+
+        <div class="toggle-row" onclick="toggleAlertNotif('discord')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">💬</span>
+            <div>
+              <div class="toggle-label">Discord</div>
+              <div class="toggle-sublabel" id="chk-discord-sub">نیاز به تنظیم</div>
+            </div>
+          </div>
+          <button class="toggle" id="chk-discord"></button>
+        </div>
+
+        <div class="toggle-row" onclick="toggleAlertNotif('sms')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">📱</span>
+            <div>
+              <div class="toggle-label">SMS (Kavenegar)</div>
+              <div class="toggle-sublabel" id="chk-sms-sub">نیاز به تنظیم</div>
+            </div>
+          </div>
+          <button class="toggle" id="chk-sms"></button>
+        </div>
+
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openNotifChannels()" style="margin-top:10px;width:100%;justify-content:center" data-i18n="setupChannels">⚙️ تنظیم کانال‌ها</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()" data-i18n="cancel">انصراف</button>
+      <button class="btn btn-primary" onclick="saveAlert()" data-i18n="save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email Settings Modal -->
+<div class="modal-overlay" id="email-modal">
+  <div class="modal">
+    <div class="modal-title">📧 <span data-i18n="emailSettings">تنظیمات ایمیل</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6"><span data-i18n="emailHint">از</span> <a href="https://www.emailjs.com" target="_blank" style="color:#93c5fd">EmailJS.com</a> <span data-i18n="emailHint2">(رایگان) استفاده کن.</span></p>
+    <div class="form-group"><label class="form-label">Public Key</label><input class="form-input" type="text" id="ej-public-key" placeholder="user_xxxxxxxxxx" /></div>
+    <div class="form-group"><label class="form-label">Service ID</label><input class="form-input" type="text" id="ej-service-id" placeholder="service_xxxxxxx" /></div>
+    <div class="form-group"><label class="form-label">Template ID</label><input class="form-input" type="text" id="ej-template-id" placeholder="template_xxxxxxx" /></div>
+    <div class="form-group"><label class="form-label" data-i18n="destEmail">ایمیل مقصد</label><input class="form-input" type="email" id="ej-to-email" placeholder="your@email.com" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEmailModal()" data-i18n="cancel">انصراف</button>
+      <button class="btn btn-blue" onclick="testEmailSettings()" style="flex:0.8" data-i18n="test">تست</button>
+      <button class="btn btn-primary" onclick="saveEmailSettings()" data-i18n="save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Channels Modal -->
+<div class="modal-overlay" id="notif-modal">
+  <div class="modal notif-modal">
+    <div class="modal-title">🔔 <span data-i18n="notifSettings">تنظیمات اطلاع‌رسانی</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6" data-i18n="notifSettingsHint">کانال‌هایی که می‌خوای هنگام فعال شدن هشدار بهت اطلاع بده رو تنظیم کن.</p>
+
+    <!-- Browser Push -->
+    <div class="notif-channel" id="nc-browser">
+      <div class="notif-channel-header">
+        <div class="notif-channel-title">🖥️ <span data-i18n="notifBrowser">نوتیف مرورگر</span></div>
+        <span class="notif-channel-status off" id="nc-browser-status">OFF</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px" data-i18n="notifBrowserDesc">نوتیفیکیشن مرورگر — بدون نیاز به تنظیم خاص</div>
+      <div class="notif-channel-actions">
+        <button class="btn btn-ghost btn-sm" id="nc-browser-btn" onclick="requestBrowserNotif()">درخواست دسترسی</button>
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="notif-channel" id="nc-email">
+      <div class="notif-channel-header">
+        <div class="notif-channel-title">📧 Email (EmailJS)</div>
+        <span class="notif-channel-status off" id="nc-email-status">OFF</span>
+      </div>
+      <div class="notif-channel-fields">
+        <input class="form-input" type="text" id="nc-ej-public-key" placeholder="Public Key" />
+        <input class="form-input" type="text" id="nc-ej-service-id" placeholder="Service ID" />
+        <input class="form-input" type="text" id="nc-ej-template-id" placeholder="Template ID" />
+        <input class="form-input" type="email" id="nc-ej-to-email" placeholder="ایمیل مقصد" />
+        <p style="font-size:11px;color:var(--muted)">از <a href="https://www.emailjs.com" target="_blank" style="color:#93c5fd">emailjs.com</a> (رایگان) استفاده کن.</p>
+      </div>
+      <div class="notif-channel-actions">
+        <button class="btn btn-ghost btn-sm" onclick="testEmailFromNC()">تست</button>
+        <button class="btn btn-primary btn-sm" onclick="saveEmailFromNC()">ذخیره</button>
+        <button class="btn btn-danger btn-sm" onclick="clearChannel('email')" id="nc-email-clear" style="display:none">حذف</button>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="notif-channel" id="nc-telegram">
+      <div class="notif-channel-header">
+        <div class="notif-channel-title">✈️ Telegram Bot</div>
+        <span class="notif-channel-status off" id="nc-tg-status">OFF</span>
+      </div>
+      <div class="notif-channel-fields">
+        <input class="form-input" type="text" id="nc-tg-token" placeholder="Bot Token  (از @BotFather بگیر)" />
+        <input class="form-input" type="text" id="nc-tg-chatid" placeholder="Chat ID  (از @userinfobot بگیر)" />
+        <p style="font-size:11px;color:var(--muted);line-height:1.6">۱. به @BotFather پیام بده و /newbot بزن → Token بگیر<br>۲. به @userinfobot پیام بده → Chat ID بگیر</p>
+      </div>
+      <div class="notif-channel-actions">
+        <button class="btn btn-ghost btn-sm" onclick="testTelegram()">تست</button>
+        <button class="btn btn-primary btn-sm" onclick="saveTelegram()">ذخیره</button>
+        <button class="btn btn-danger btn-sm" onclick="clearChannel('telegram')" id="nc-tg-clear" style="display:none">حذف</button>
+      </div>
+    </div>
+
+    <!-- Discord -->
+    <div class="notif-channel" id="nc-discord">
+      <div class="notif-channel-header">
+        <div class="notif-channel-title">💬 Discord Webhook</div>
+        <span class="notif-channel-status off" id="nc-discord-status">OFF</span>
+      </div>
+      <div class="notif-channel-fields">
+        <input class="form-input" type="text" id="nc-discord-url" placeholder="Webhook URL" />
+        <p style="font-size:11px;color:var(--muted);line-height:1.6">توی Discord: Server Settings → Integrations → Webhooks → New Webhook → Copy URL</p>
+      </div>
+      <div class="notif-channel-actions">
+        <button class="btn btn-ghost btn-sm" onclick="testDiscord()">تست</button>
+        <button class="btn btn-primary btn-sm" onclick="saveDiscord()">ذخیره</button>
+        <button class="btn btn-danger btn-sm" onclick="clearChannel('discord')" id="nc-discord-clear" style="display:none">حذف</button>
+      </div>
+    </div>
+
+    <!-- Kavenegar SMS -->
+    <div class="notif-channel" id="nc-sms">
+      <div class="notif-channel-header">
+        <div class="notif-channel-title">📱 SMS (Kavenegar)</div>
+        <span class="notif-channel-status off" id="nc-sms-status">OFF</span>
+      </div>
+      <div class="notif-channel-fields">
+        <input class="form-input" type="text" id="nc-kav-apikey" placeholder="API Key (از panel.kavenegar.com)" />
+        <input class="form-input" type="text" id="nc-kav-receptor" placeholder="شماره موبایل گیرنده (مثلاً 09123456789)" />
+        <p style="font-size:11px;color:var(--muted)">از <a href="https://panel.kavenegar.com" target="_blank" style="color:#93c5fd">panel.kavenegar.com</a> API Key بگیر.</p>
+      </div>
+      <div class="notif-channel-actions">
+        <button class="btn btn-ghost btn-sm" onclick="testSMS()">تست</button>
+        <button class="btn btn-primary btn-sm" onclick="saveSMS()">ذخیره</button>
+        <button class="btn btn-danger btn-sm" onclick="clearChannel('sms')" id="nc-sms-clear" style="display:none">حذف</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeNotifChannels()" data-i18n="close">بستن</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Footer bar: status left, refresh right -->
+<div class="footer-bar">
+  <div style="font-size:10px;color:#666;font-family:var(--mono);" id="footer-api-status">—</div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn-icon" id="settings-btn" title="تنظیمات ایمیل">✉️</button>
+    <button class="btn-icon" id="refresh-btn" title="بروزرسانی">↻</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ── Safe fetch with timeout — no AbortSignal (not clonable in some browsers) ──
+function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal })
+    .then(r => { clearTimeout(timer); return r; })
+    .catch(e => { clearTimeout(timer); throw e; });
+}
+
+async function fetchWithRetry(url, ms, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetchWithTimeout(url, ms);
+      if (res.ok) return res;
+    } catch(e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  return null;
+}
+
+function makeSignal(ms) {
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), ms);
+    return ctrl.signal;
+  } catch(e) { return undefined; }
+}
+// ═══════════════════════════════════════════════
+let currentLang = localStorage.getItem('lang') || 'fa';
+const I18N = {
+  fa: {
+    newAlert: 'هشدار', setup: 'تنظیم', setAlertAt: 'ست آلرت در این قیمت',
+    clickDrag: 'کلیک + درگ', hintDraw: 'روی چارت برای کشیدن خط هشدار',
+    click: 'کلیک', hintQuick: 'تک‌کلیک برای ست سریع',
+    live: 'زنده', total: 'کل', active: 'فعال', triggered: 'فعال‌شده',
+    currency: 'ارز', alertDir: 'جهت هشدار', above: '↑ بالاتر از', below: '↓ پایین‌تر از',
+    targetPrice: 'قیمت هدف (USDT)', emailNotif: 'نوتیف ایمیلی',
+    sendEmail: 'ارسال ایمیل هنگام فعال شدن', reminder24: 'یادآوری ۲۴ ساعته',
+    reminderSub: 'اگر هشدار هنوز فعال نشده، یادآوری می‌فرسته',
+    cancel: 'انصراف', save: 'ذخیره', test: 'تست',
+    emailSettings: 'تنظیمات ایمیل', destEmail: 'ایمیل مقصد',
+    emailHint: 'از', emailHint2: '(رایگان) استفاده کن.',
+    loadingChart: 'در حال بارگذاری چارت...', chartError: 'خطا در دریافت داده — VPN؟',
+    noAlerts: 'هنوز هشداری نداری', noAlertsSub: 'روی چارت خط بکش یا «هشدار جدید» رو بزن',
+    alertsCount: 'هشدارها', alertNew: 'هشدار جدید', alertEdit: 'ویرایش هشدار', alertConfirm: 'تأیید هشدار',
+    targetPriceLabel: 'قیمت هدف', currentPriceLabel: 'قیمت فعلی',
+    dirAboveFull: '↑ هشدار وقتی بالاتر از هدف رفت', dirBelowFull: '↓ هشدار وقتی پایین‌تر از هدف رفت',
+    badgeActive: '● فعال', badgeAbove: '▲ فعال شد', badgeBelow: '▼ فعال شد',
+    stop: 'توقف', activate: 'فعال', deleted: 'حذف شد',
+    alertAdded: 'هشدار اضافه شد ✓', alertEdited: 'هشدار ویرایش شد', invalidPrice: 'قیمت معتبر وارد کن',
+    emailSent: '📧 ایمیل ارسال شد', emailError: 'خطا در ارسال ایمیل',
+    emailSaved: 'تنظیمات ایمیل ذخیره شد ✓', emailTestSent: '📧 ایمیل تست ارسال شد!',
+    emailFillAll: 'همه فیلدها رو پر کن', emailSending: 'در حال ارسال تست...',
+    emailBannerOff: '📧 ایمیل تنظیم نشده — برای دریافت نوتیف ایمیلی، تنظیمات رو پر کن',
+    emailBannerOn: 'ایمیل نوتیف فعاله → ', emailToggleSub: 'هنگام فعال شدن هشدار ارسال می‌شه',
+    refresh: 'بروزرسانی...', alertTitle: 'هشدار', alertBody: 'قیمت',
+    coinSearchPlaceholder: 'جستجو: BTC, ETH, SOL...',
+    loadingCoins: 'در حال بارگذاری کوین‌ها...',
+    tf15m: '۱۵م', tf1h: '۱س', tf4h: '۴س', tf1d: 'روز',
+    setAlertBtn: '+ ست آلرت',
+  },
+  en: {
+    newAlert: 'Alert', setup: 'Setup', setAlertAt: 'Set alert at this price',
+    clickDrag: 'Click + Drag', hintDraw: 'on chart to draw alert line',
+    click: 'Click', hintQuick: 'single click for quick set',
+    live: 'Live', total: 'Total', active: 'Active', triggered: 'Triggered',
+    currency: 'Coin', alertDir: 'Alert direction', above: '↑ Above', below: '↓ Below',
+    targetPrice: 'Target price (USDT)', emailNotif: 'Email notifications',
+    sendEmail: 'Send email on trigger', reminder24: '24h reminder',
+    reminderSub: 'Sends a reminder if alert hasn\'t triggered yet',
+    cancel: 'Cancel', save: 'Save', test: 'Test',
+    emailSettings: 'Email settings', destEmail: 'Destination email',
+    emailHint: 'Use', emailHint2: '(free) to send emails.',
+    loadingChart: 'Loading chart...', chartError: 'Data fetch failed — VPN?',
+    noAlerts: 'No alerts yet', noAlertsSub: 'Draw a line on chart or tap "New Alert"',
+    alertsCount: 'Alerts', alertNew: 'New Alert', alertEdit: 'Edit Alert', alertConfirm: 'Confirm Alert',
+    targetPriceLabel: 'Target', currentPriceLabel: 'Current',
+    dirAboveFull: '↑ Alert when price goes above target', dirBelowFull: '↓ Alert when price goes below target',
+    badgeActive: '● Active', badgeAbove: '▲ Triggered', badgeBelow: '▼ Triggered',
+    stop: 'Pause', activate: 'Enable', deleted: 'Deleted',
+    alertAdded: 'Alert added ✓', alertEdited: 'Alert updated', invalidPrice: 'Enter a valid price',
+    emailSent: '📧 Email sent', emailError: 'Email send failed',
+    emailSaved: 'Email settings saved ✓', emailTestSent: '📧 Test email sent!',
+    emailFillAll: 'Fill in all fields', emailSending: 'Sending test...',
+    emailBannerOff: '📧 Email not configured — set up to receive notifications',
+    emailBannerOn: 'Email notifications active → ', emailToggleSub: 'Sent when alert triggers',
+    refresh: 'Refreshing...', alertTitle: 'Alert', alertBody: 'Price',
+    coinSearchPlaceholder: 'Search: BTC, ETH, SOL...',
+    loadingCoins: 'Loading coins...',
+    tf15m: '15m', tf1h: '1h', tf4h: '4h', tf1d: 'Day',
+    setAlertBtn: '+ Set Alert',
+  }
+};
+
+function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.fa[key] || key; }
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  document.getElementById('lang-label').textContent = currentLang === 'fa' ? 'EN' : 'FA';
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === 'fa' ? 'rtl' : 'ltr';
+  document.getElementById('coin-search-input').placeholder = t('coinSearchPlaceholder');
+  document.getElementById('chart-loading').textContent = t('loadingChart');
+  updateEmailBanner();
+  renderAlerts();
+  buildLivePrices();
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'fa' ? 'en' : 'fa';
+  localStorage.setItem('lang', currentLang);
+  applyI18n();
+}
+
+// ═══════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════
+let currentTheme = localStorage.getItem('theme') || 'dark';
+function applyTheme() {
+  const icon = document.getElementById('theme-icon');
+  if (currentTheme === 'light') {
+    document.documentElement.classList.add('light');
+    if (icon) { icon.className = 'theme-svg-icon sun'; }
+  } else {
+    document.documentElement.classList.remove('light');
+    if (icon) { icon.className = 'theme-svg-icon moon'; }
+  }
+  // Re-init chart with new theme colors if already loaded
+  if (typeof lwChart !== 'undefined' && lwChart && candleSeries) {
+    const isDark = currentTheme === 'dark';
+    lwChart.applyOptions({
+      layout: { background: { color: isDark ? '#111111' : '#ffffff' }, textColor: isDark ? '#666' : '#888' },
+      grid: { vertLines: { color: isDark ? '#1a1a1a' : '#eeeeee' }, horzLines: { color: isDark ? '#1a1a1a' : '#eeeeee' } },
+      rightPriceScale: { borderColor: isDark ? '#2a2a2a' : '#dddddd' },
+      timeScale: { borderColor: isDark ? '#2a2a2a' : '#dddddd' },
+    });
+    redrawAlertLines(currentChartCoin);
+  }
+}
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', currentTheme);
+  applyTheme();
+}
+// applyTheme() called inside DOMContentLoaded
+
+// ═══════════════════════════════════════════════
+// COIN LIST — Top 300 from CoinGecko, weekly cache
+// ═══════════════════════════════════════════════
+const COINS_CACHE_KEY = 'coins_cc_v2';
+const COINS_CACHE_TS_KEY = 'coins_cc_v2_ts';
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Static fallback — 200 coins by market cap
+let COIN_META = {
+  'bitcoin':            { sym:'BTCUSDT',   base:'BTC',   icon:'₿', binance:'BTCUSDT',   name:'Bitcoin',          rank:1   },
+  'ethereum':           { sym:'ETHUSDT',   base:'ETH',   icon:'Ξ', binance:'ETHUSDT',   name:'Ethereum',         rank:2   },
+  'tether':             { sym:'USDTUSDT',  base:'USDT',  icon:'₮', binance:'BUSDUSDT',  name:'Tether',           rank:3   },
+  'binancecoin':        { sym:'BNBUSDT',   base:'BNB',   icon:'B', binance:'BNBUSDT',   name:'BNB',              rank:4   },
+  'solana':             { sym:'SOLUSDT',   base:'SOL',   icon:'◎', binance:'SOLUSDT',   name:'Solana',           rank:5   },
+  'ripple':             { sym:'XRPUSDT',   base:'XRP',   icon:'✕', binance:'XRPUSDT',   name:'XRP',              rank:6   },
+  'usd-coin':           { sym:'USDCUSDT',  base:'USDC',  icon:'$', binance:'USDCUSDT',  name:'USD Coin',         rank:7   },
+  'dogecoin':           { sym:'DOGEUSDT',  base:'DOGE',  icon:'Ð', binance:'DOGEUSDT',  name:'Dogecoin',         rank:8   },
+  'cardano':            { sym:'ADAUSDT',   base:'ADA',   icon:'₳', binance:'ADAUSDT',   name:'Cardano',          rank:9   },
+  'tron':               { sym:'TRXUSDT',   base:'TRX',   icon:'T', binance:'TRXUSDT',   name:'TRON',             rank:10  },
+  'avalanche-2':        { sym:'AVAXUSDT',  base:'AVAX',  icon:'A', binance:'AVAXUSDT',  name:'Avalanche',        rank:11  },
+  'shiba-inu':          { sym:'SHIBUSDT',  base:'SHIB',  icon:'🐕',binance:'SHIBUSDT',  name:'Shiba Inu',        rank:12  },
+  'polkadot':           { sym:'DOTUSDT',   base:'DOT',   icon:'●', binance:'DOTUSDT',   name:'Polkadot',         rank:13  },
+  'chainlink':          { sym:'LINKUSDT',  base:'LINK',  icon:'⬡', binance:'LINKUSDT',  name:'Chainlink',        rank:14  },
+  'bitcoin-cash':       { sym:'BCHUSDT',   base:'BCH',   icon:'Ƀ', binance:'BCHUSDT',   name:'Bitcoin Cash',     rank:15  },
+  'litecoin':           { sym:'LTCUSDT',   base:'LTC',   icon:'Ł', binance:'LTCUSDT',   name:'Litecoin',         rank:16  },
+  'uniswap':            { sym:'UNIUSDT',   base:'UNI',   icon:'🦄',binance:'UNIUSDT',   name:'Uniswap',          rank:17  },
+  'dai':                { sym:'DAIUSDT',   base:'DAI',   icon:'◈', binance:'DAIUSDT',   name:'Dai',              rank:18  },
+  'leo-token':          { sym:'LEOUSDT',   base:'LEO',   icon:'L', binance:'LEOUSDT',   name:'LEO Token',        rank:19  },
+  'cosmos':             { sym:'ATOMUSDT',  base:'ATOM',  icon:'⚛', binance:'ATOMUSDT',  name:'Cosmos',           rank:20  },
+  'stellar':            { sym:'XLMUSDT',   base:'XLM',   icon:'✦', binance:'XLMUSDT',   name:'Stellar',          rank:21  },
+  'monero':             { sym:'XMRUSDT',   base:'XMR',   icon:'ɱ', binance:'XMRUSDT',   name:'Monero',           rank:22  },
+  'ethereum-classic':   { sym:'ETCUSDT',   base:'ETC',   icon:'⟠', binance:'ETCUSDT',   name:'Ethereum Classic', rank:23  },
+  'okb':                { sym:'OKBUSDT',   base:'OKB',   icon:'O', binance:'OKBUSDT',   name:'OKB',              rank:24  },
+  'internet-computer':  { sym:'ICPUSDT',   base:'ICP',   icon:'∞', binance:'ICPUSDT',   name:'Internet Computer',rank:25  },
+  'filecoin':           { sym:'FILUSDT',   base:'FIL',   icon:'⌘', binance:'FILUSDT',   name:'Filecoin',         rank:26  },
+  'hedera':             { sym:'HBARUSDT',  base:'HBAR',  icon:'ℏ', binance:'HBARUSDT',  name:'Hedera',           rank:27  },
+  'lido-dao':           { sym:'LDOUSDT',   base:'LDO',   icon:'L', binance:'LDOUSDT',   name:'Lido DAO',         rank:28  },
+  'cronos':             { sym:'CROUSDT',   base:'CRO',   icon:'C', binance:'CROUSDT',   name:'Cronos',           rank:29  },
+  'vechain':            { sym:'VETUSDT',   base:'VET',   icon:'V', binance:'VETUSDT',   name:'VeChain',          rank:30  },
+  'aptos':              { sym:'APTUSDT',   base:'APT',   icon:'A', binance:'APTUSDT',   name:'Aptos',            rank:31  },
+  'near':               { sym:'NEARUSDT',  base:'NEAR',  icon:'N', binance:'NEARUSDT',  name:'NEAR Protocol',    rank:32  },
+  'quant-network':      { sym:'QNTUSDT',   base:'QNT',   icon:'Q', binance:'QNTUSDT',   name:'Quant',            rank:33  },
+  'algorand':           { sym:'ALGOUSDT',  base:'ALGO',  icon:'A', binance:'ALGOUSDT',  name:'Algorand',         rank:34  },
+  'arbitrum':           { sym:'ARBUSDT',   base:'ARB',   icon:'A', binance:'ARBUSDT',   name:'Arbitrum',         rank:35  },
+  'the-graph':          { sym:'GRTUSDT',   base:'GRT',   icon:'G', binance:'GRTUSDT',   name:'The Graph',        rank:36  },
+  'optimism':           { sym:'OPUSDT',    base:'OP',    icon:'O', binance:'OPUSDT',    name:'Optimism',         rank:37  },
+  'fantom':             { sym:'FTMUSDT',   base:'FTM',   icon:'F', binance:'FTMUSDT',   name:'Fantom',           rank:38  },
+  'aave':               { sym:'AAVEUSDT',  base:'AAVE',  icon:'A', binance:'AAVEUSDT',  name:'Aave',             rank:39  },
+  'elrond-erd-2':       { sym:'EGLDUSDT',  base:'EGLD',  icon:'E', binance:'EGLDUSDT',  name:'MultiversX',       rank:40  },
+  'eos':                { sym:'EOSUSDT',   base:'EOS',   icon:'E', binance:'EOSUSDT',   name:'EOS',              rank:41  },
+  'the-sandbox':        { sym:'SANDUSDT',  base:'SAND',  icon:'S', binance:'SANDUSDT',  name:'The Sandbox',      rank:42  },
+  'decentraland':       { sym:'MANAUSDT',  base:'MANA',  icon:'M', binance:'MANAUSDT',  name:'Decentraland',     rank:43  },
+  'tezos':              { sym:'XTZUSDT',   base:'XTZ',   icon:'ꜩ', binance:'XTZUSDT',   name:'Tezos',            rank:44  },
+  'flow':               { sym:'FLOWUSDT',  base:'FLOW',  icon:'F', binance:'FLOWUSDT',  name:'Flow',             rank:45  },
+  'theta-token':        { sym:'THETAUSDT', base:'THETA', icon:'Θ', binance:'THETAUSDT', name:'Theta Network',    rank:46  },
+  'axie-infinity':      { sym:'AXSUSDT',   base:'AXS',   icon:'A', binance:'AXSUSDT',   name:'Axie Infinity',    rank:47  },
+  'kucoin-shares':      { sym:'KSMUSDT',   base:'KCS',   icon:'K', binance:'KSMUSDT',   name:'KuCoin Token',     rank:48  },
+  'maker':              { sym:'MKRUSDT',   base:'MKR',   icon:'M', binance:'MKRUSDT',   name:'Maker',            rank:49  },
+  'compound-governance-token':{ sym:'COMPUSDT', base:'COMP', icon:'C', binance:'COMPUSDT', name:'Compound',     rank:50  },
+  'pancakeswap-token':  { sym:'CAKEUSDT',  base:'CAKE',  icon:'🥞',binance:'CAKEUSDT',  name:'PancakeSwap',      rank:51  },
+  'chiliz':             { sym:'CHZUSDT',   base:'CHZ',   icon:'C', binance:'CHZUSDT',   name:'Chiliz',           rank:52  },
+  'klaytn':             { sym:'KLAYUSDT',  base:'KLAY',  icon:'K', binance:'KLAYUSDT',  name:'Klaytn',           rank:53  },
+  'iota':               { sym:'IOTAUSDT',  base:'IOTA',  icon:'I', binance:'IOTAUSDT',  name:'IOTA',             rank:54  },
+  'neo':                { sym:'NEOUSDT',   base:'NEO',   icon:'N', binance:'NEOUSDT',   name:'NEO',              rank:55  },
+  'dash':               { sym:'DASHUSDT',  base:'DASH',  icon:'D', binance:'DASHUSDT',  name:'Dash',             rank:56  },
+  'waves':              { sym:'WAVESUSDT', base:'WAVES', icon:'W', binance:'WAVESUSDT', name:'Waves',            rank:57  },
+  'zcash':              { sym:'ZECUSDT',   base:'ZEC',   icon:'Z', binance:'ZECUSDT',   name:'Zcash',            rank:58  },
+  'bitcoin-sv':         { sym:'BSVUSDT',   base:'BSV',   icon:'B', binance:'BSVUSDT',   name:'Bitcoin SV',       rank:59  },
+  'enjincoin':          { sym:'ENJUSDT',   base:'ENJ',   icon:'E', binance:'ENJUSDT',   name:'Enjin Coin',       rank:60  },
+  'loopring':           { sym:'LRCUSDT',   base:'LRC',   icon:'L', binance:'LRCUSDT',   name:'Loopring',         rank:61  },
+  'basic-attention-token':{ sym:'BATUSDT', base:'BAT',   icon:'B', binance:'BATUSDT',   name:'Basic Attention Token', rank:62 },
+  'decred':             { sym:'DCRUSDT',   base:'DCR',   icon:'D', binance:'DCRUSDT',   name:'Decred',           rank:63  },
+  'curve-dao-token':    { sym:'CRVUSDT',   base:'CRV',   icon:'C', binance:'CRVUSDT',   name:'Curve DAO',        rank:64  },
+  'iotex':              { sym:'IOTXUSDT',  base:'IOTX',  icon:'I', binance:'IOTXUSDT',  name:'IoTeX',            rank:65  },
+  'zilliqa':            { sym:'ZILUSDT',   base:'ZIL',   icon:'Z', binance:'ZILUSDT',   name:'Zilliqa',          rank:66  },
+  'yearn-finance':      { sym:'YFIUSDT',   base:'YFI',   icon:'Y', binance:'YFIUSDT',   name:'yearn.finance',    rank:67  },
+  'sushiswap':          { sym:'SUSHIUSDT', base:'SUSHI', icon:'S', binance:'SUSHIUSDT', name:'SushiSwap',        rank:68  },
+  'harmony':            { sym:'ONEUSDT',   base:'ONE',   icon:'O', binance:'ONEUSDT',   name:'Harmony',          rank:69  },
+  'terra-luna':         { sym:'LUNAUSDT',  base:'LUNA',  icon:'🌙',binance:'LUNAUSDT',  name:'Terra',            rank:70  },
+  'celo':               { sym:'CELOUSDT',  base:'CELO',  icon:'C', binance:'CELOUSDT',  name:'Celo',             rank:71  },
+  'helium':             { sym:'HNTUSDT',   base:'HNT',   icon:'H', binance:'HNTUSDT',   name:'Helium',           rank:72  },
+  'gala':               { sym:'GALAUSDT',  base:'GALA',  icon:'G', binance:'GALAUSDT',  name:'Gala',             rank:73  },
+  'ecash':              { sym:'XECUSDT',   base:'XEC',   icon:'X', binance:'XECUSDT',   name:'eCash',            rank:74  },
+  'kusama':             { sym:'KSMUSDT',   base:'KSM',   icon:'K', binance:'KSMUSDT',   name:'Kusama',           rank:75  },
+  'ankr':               { sym:'ANKRUSDT',  base:'ANKR',  icon:'A', binance:'ANKRUSDT',  name:'Ankr',             rank:76  },
+  '1inch':              { sym:'1INCHUSDT', base:'1INCH', icon:'1', binance:'1INCHUSDT', name:'1inch',            rank:77  },
+  'render-token':       { sym:'RENDERUSDT',base:'RNDR',  icon:'R', binance:'RENDERUSDT',name:'Render',           rank:78  },
+  'injective-protocol': { sym:'INJUSDT',   base:'INJ',   icon:'I', binance:'INJUSDT',   name:'Injective',        rank:79  },
+  'sui':                { sym:'SUIUSDT',   base:'SUI',   icon:'S', binance:'SUIUSDT',   name:'Sui',              rank:80  },
+  'pepe':               { sym:'PEPEUSDT',  base:'PEPE',  icon:'🐸',binance:'PEPEUSDT',  name:'Pepe',             rank:81  },
+  'worldcoin-wld':      { sym:'WLDUSDT',   base:'WLD',   icon:'W', binance:'WLDUSDT',   name:'Worldcoin',        rank:82  },
+  'sei-network':        { sym:'SEIUSDT',   base:'SEI',   icon:'S', binance:'SEIUSDT',   name:'Sei',              rank:83  },
+  'blur':               { sym:'BLURUSDT',  base:'BLUR',  icon:'B', binance:'BLURUSDT',  name:'Blur',             rank:84  },
+  'mina-protocol':      { sym:'MINAUSDT',  base:'MINA',  icon:'M', binance:'MINAUSDT',  name:'Mina Protocol',    rank:85  },
+  'gmx':                { sym:'GMXUSDT',   base:'GMX',   icon:'G', binance:'GMXUSDT',   name:'GMX',              rank:86  },
+  'frax':               { sym:'FRAXUSDT',  base:'FRAX',  icon:'F', binance:'FRAXUSDT',  name:'Frax',             rank:87  },
+  'synthetix':          { sym:'SNXUSDT',   base:'SNX',   icon:'S', binance:'SNXUSDT',   name:'Synthetix',        rank:88  },
+  'stepn':              { sym:'GMTUSDT',   base:'GMT',   icon:'G', binance:'GMTUSDT',   name:'STEPN',            rank:89  },
+  'floki':              { sym:'FLOKIUSDT', base:'FLOKI', icon:'F', binance:'FLOKIUSDT', name:'Floki',            rank:90  },
+  'rocket-pool':        { sym:'RPLUSDT',   base:'RPL',   icon:'R', binance:'RPLUSDT',   name:'Rocket Pool',      rank:91  },
+  'bone-shibaswap':     { sym:'BONEUSDT',  base:'BONE',  icon:'B', binance:'BONEUSDT',  name:'Bone ShibaSwap',   rank:92  },
+  'trust-wallet-token': { sym:'TWTATUSDT', base:'TWT',   icon:'T', binance:'TWTUSDT',   name:'Trust Wallet Token',rank:93 },
+  'gate-token':         { sym:'GTUSDT',    base:'GT',    icon:'G', binance:'GTUSDT',    name:'Gate Token',       rank:94  },
+  'woo-network':        { sym:'WOOUSDT',   base:'WOO',   icon:'W', binance:'WOOUSDT',   name:'WOO Network',      rank:95  },
+  'casper-network':     { sym:'CSPRUSDT',  base:'CSPR',  icon:'C', binance:'CSPRUSDT',  name:'Casper',           rank:96  },
+  'fetch-ai':           { sym:'FETUSDT',   base:'FET',   icon:'F', binance:'FETUSDT',   name:'Fetch.ai',         rank:97  },
+  'ocean-protocol':     { sym:'OCEANUSDT', base:'OCEAN', icon:'O', binance:'OCEANUSDT', name:'Ocean Protocol',   rank:98  },
+  'dydx':               { sym:'DYDXUSDT',  base:'DYDX',  icon:'D', binance:'DYDXUSDT',  name:'dYdX',             rank:99  },
+  'galxe':              { sym:'GALUSDT',   base:'GAL',   icon:'G', binance:'GALUSDT',   name:'Galxe',            rank:100 },
+  'wemix':              { sym:'WEMIXUSDT', base:'WEMIX', icon:'W', binance:'WEMIXUSDT', name:'WEMIX',            rank:101 },
+  'immutable-x':        { sym:'IMXUSDT',   base:'IMX',   icon:'I', binance:'IMXUSDT',   name:'Immutable X',      rank:102 },
+  'mask-network':       { sym:'MASKUSDT',  base:'MASK',  icon:'M', binance:'MASKUSDT',  name:'Mask Network',     rank:103 },
+  'storj':              { sym:'STORJUSDT', base:'STORJ', icon:'S', binance:'STORJUSDT', name:'Storj',            rank:104 },
+  'kava':               { sym:'KAVAUSDT',  base:'KAVA',  icon:'K', binance:'KAVAUSDT',  name:'Kava',             rank:105 },
+  'band-protocol':      { sym:'BANDUSDT',  base:'BAND',  icon:'B', binance:'BANDUSDT',  name:'Band Protocol',    rank:106 },
+  'ren':                { sym:'RENUSDT',   base:'REN',   icon:'R', binance:'RENUSDT',   name:'Ren',              rank:107 },
+  'numeraire':          { sym:'NMRUSDT',   base:'NMR',   icon:'N', binance:'NMRUSDT',   name:'Numeraire',        rank:108 },
+  'oasis-network':      { sym:'ROSEUSDT',  base:'ROSE',  icon:'R', binance:'ROSEUSDT',  name:'Oasis Network',    rank:109 },
+  'coti':               { sym:'COTIUSDT',  base:'COTI',  icon:'C', binance:'COTIUSDT',  name:'COTI',             rank:110 },
+  'nervos-network':     { sym:'CKTBUSDT',  base:'CKB',   icon:'C', binance:'CKBUSDT',   name:'Nervos Network',   rank:111 },
+  'wax':                { sym:'WAXPUSDT',  base:'WAXP',  icon:'W', binance:'WAXPUSDT',  name:'WAX',              rank:112 },
+  'kadena':             { sym:'KDAUSDT',   base:'KDA',   icon:'K', binance:'KDAUSDT',   name:'Kadena',           rank:113 },
+  'ravencoin':          { sym:'RVNUSDT',   base:'RVN',   icon:'R', binance:'RVNUSDT',   name:'Ravencoin',        rank:114 },
+  'polygon':            { sym:'MATICUSDT', base:'MATIC', icon:'⬡', binance:'MATICUSDT', name:'Polygon',          rank:115 },
+  'horizen':            { sym:'ZENUSDT',   base:'ZEN',   icon:'Z', binance:'ZENUSDT',   name:'Horizen',          rank:116 },
+  'skale':              { sym:'SKLUSDT',   base:'SKL',   icon:'S', binance:'SKLUSDT',   name:'SKALE Network',    rank:117 },
+  'power-ledger':       { sym:'POWRUSDT',  base:'POWR',  icon:'P', binance:'POWRUSDT',  name:'Power Ledger',     rank:118 },
+  'civic':              { sym:'CVCUSDT',   base:'CVC',   icon:'C', binance:'CVCUSDT',   name:'Civic',            rank:119 },
+  'request-network':    { sym:'REQUSDT',   base:'REQ',   icon:'R', binance:'REQUSDT',   name:'Request',          rank:120 },
+  'numeraire2':         { sym:'NUUSDT',    base:'NU',    icon:'N', binance:'NUUSDT',    name:'NuCypher',         rank:121 },
+  'xinfin-network':     { sym:'XDCUSDT',   base:'XDC',   icon:'X', binance:'XDCUSDT',   name:'XDC Network',      rank:122 },
+  'arweave':            { sym:'ARUSDT',    base:'AR',    icon:'A', binance:'ARUSDT',    name:'Arweave',          rank:123 },
+  'ontology':           { sym:'ONTUSDT',   base:'ONT',   icon:'O', binance:'ONTUSDT',   name:'Ontology',         rank:124 },
+  'huobi-token':        { sym:'HTUSDT',    base:'HT',    icon:'H', binance:'HTUSDT',    name:'Huobi Token',      rank:125 },
+  'nem':                { sym:'XEMUSDT',   base:'XEM',   icon:'N', binance:'XEMUSDT',   name:'NEM',              rank:126 },
+  'siacoin':            { sym:'SCUSDT',    base:'SC',    icon:'S', binance:'SCUSDT',    name:'Siacoin',          rank:127 },
+  'stacks':             { sym:'STXUSDT',   base:'STX',   icon:'S', binance:'STXUSDT',   name:'Stacks',           rank:128 },
+  'convex-finance':     { sym:'CVXUSDT',   base:'CVX',   icon:'C', binance:'CVXUSDT',   name:'Convex Finance',   rank:129 },
+  'balancer':           { sym:'BALUSDT',   base:'BAL',   icon:'B', binance:'BALUSDT',   name:'Balancer',         rank:130 },
+  'amp-token':          { sym:'AMPUSDT',   base:'AMP',   icon:'A', binance:'AMPUSDT',   name:'Amp',              rank:131 },
+  'axelar':             { sym:'AXLUSDT',   base:'AXL',   icon:'A', binance:'AXLUSDT',   name:'Axelar',           rank:132 },
+  'mdex':               { sym:'MDXUSDT',   base:'MDX',   icon:'M', binance:'MDXUSDT',   name:'Mdex',             rank:133 },
+  'lisk':               { sym:'LSKUSDT',   base:'LSK',   icon:'L', binance:'LSKUSDT',   name:'Lisk',             rank:134 },
+  'celo-dollar':        { sym:'CUSDUSDT',  base:'CUSD',  icon:'C', binance:'CUSDUSDT',  name:'Celo Dollar',      rank:135 },
+  'pax-gold':           { sym:'PAXGUSDT',  base:'PAXG',  icon:'🥇',binance:'PAXGUSDT',  name:'PAX Gold',         rank:136 },
+  'terra-luna-2':       { sym:'LUNA2USDT', base:'LUNC',  icon:'🌙',binance:'LUNCUSDT',  name:'Terra Classic',    rank:137 },
+  'pancake-bunny':      { sym:'BUNNYUSDT', base:'BUNNY', icon:'🐰',binance:'BUNNYUSDT', name:'Pancake Bunny',    rank:138 },
+  'moonbeam':           { sym:'GLMRUSDT',  base:'GLMR',  icon:'G', binance:'GLMRUSDT',  name:'Moonbeam',         rank:139 },
+  'moonriver':          { sym:'MOVRUSDT',  base:'MOVR',  icon:'M', binance:'MOVRUSDT',  name:'Moonriver',        rank:140 },
+  'velas':              { sym:'VLXUSDT',   base:'VLX',   icon:'V', binance:'VLXUSDT',   name:'Velas',            rank:141 },
+  'bifrost':            { sym:'BNCUSDT',   base:'BNC',   icon:'B', binance:'BNCUSDT',   name:'Bifrost',          rank:142 },
+  'ellipsis':           { sym:'EPSUSDT',   base:'EPS',   icon:'E', binance:'EPSUSDT',   name:'Ellipsis',         rank:143 },
+  'venus':              { sym:'XVSUSDT',   base:'XVS',   icon:'V', binance:'XVSUSDT',   name:'Venus',            rank:144 },
+  'alpha-finance':      { sym:'ALPHAUSDT', base:'ALPHA', icon:'A', binance:'ALPHAUSDT', name:'Alpha Venture DAO',rank:145 },
+  'dodo':               { sym:'DODOUSDT',  base:'DODO',  icon:'D', binance:'DODOUSDT',  name:'DODO',             rank:146 },
+  'perpetual-protocol': { sym:'PERPUSDT',  base:'PERP',  icon:'P', binance:'PERPUSDT',  name:'Perpetual Protocol',rank:147},
+  'bella-protocol':     { sym:'BELUSDT',   base:'BEL',   icon:'B', binance:'BELUSDT',   name:'Bella Protocol',   rank:148 },
+  'linear':             { sym:'LNAUSDT',   base:'LINA',  icon:'L', binance:'LINAUSDT',  name:'Linear Finance',   rank:149 },
+  'reef':               { sym:'REEFUSDT',  base:'REEF',  icon:'R', binance:'REEFUSDT',  name:'Reef',             rank:150 },
+  'tranchess':          { sym:'CHESSUSDT', base:'CHESS', icon:'C', binance:'CHESSUSDT', name:'Tranchess',        rank:151 },
+  'burger-swap':        { sym:'BAKEUSDT',  base:'BAKE',  icon:'B', binance:'BAKEUSDT',  name:'BakeryToken',      rank:152 },
+  'spartan-protocol':   { sym:'SPARTAUSDT',base:'SPARTA',icon:'S', binance:'SPARTAUSDT',name:'Spartan Protocol', rank:153 },
+  'auto':               { sym:'AUTOUSDT',  base:'AUTO',  icon:'A', binance:'AUTOUSDT',  name:'Auto',             rank:154 },
+  'alpaca-finance':     { sym:'ALPACAUSDT',base:'ALPACA',icon:'🦙',binance:'ALPACAUSDT',name:'Alpaca Finance',   rank:155 },
+  'ramp':               { sym:'RAMPUSDT',  base:'RAMP',  icon:'R', binance:'RAMPUSDT',  name:'RAMP',             rank:156 },
+  'beefy-finance':      { sym:'BOOUSDT',   base:'BOO',   icon:'B', binance:'BOOUSDT',   name:'SpookySwap',       rank:157 },
+  'cocos-bcx':          { sym:'COCOSUSDT', base:'COCOS', icon:'C', binance:'COCOSUSDT', name:'Cocos-BCX',        rank:158 },
+  'bluzelle':           { sym:'BLZUSDT',   base:'BLZ',   icon:'B', binance:'BLZUSDT',   name:'Bluzelle',         rank:159 },
+  'hive':               { sym:'HIVEUSDT',  base:'HIVE',  icon:'H', binance:'HIVEUSDT',  name:'Hive',             rank:160 },
+  'certik':             { sym:'CTOUSDT',   base:'CTO',   icon:'C', binance:'CTOUSDT',   name:'Crypto.com Coin',  rank:161 },
+  'syscoin':            { sym:'SYSUSDT',   base:'SYS',   icon:'S', binance:'SYSUSDT',   name:'Syscoin',          rank:162 },
+  'xyo-network':        { sym:'XYOUSDT',   base:'XYO',   icon:'X', binance:'XYOUSDT',   name:'XYO',              rank:163 },
+  'threshold':          { sym:'TBTCUSDT',  base:'T',     icon:'T', binance:'TUSDT',     name:'Threshold',        rank:164 },
+  'spell-token':        { sym:'SPELLUSDT', base:'SPELL', icon:'S', binance:'SPELLUSDT', name:'Spell Token',      rank:165 },
+  'joe':                { sym:'JOEUSDT',   base:'JOE',   icon:'J', binance:'JOEUSDT',   name:'JOE',              rank:166 },
+  'stargate-finance':   { sym:'STGUSDT',   base:'STG',   icon:'S', binance:'STGUSDT',   name:'Stargate Finance', rank:167 },
+  'treasure':           { sym:'MAGICUSDT', base:'MAGIC', icon:'M', binance:'MAGICUSDT', name:'Treasure',         rank:168 },
+  'gains-network':      { sym:'GNSUSDT',   base:'GNS',   icon:'G', binance:'GNSUSDT',   name:'Gains Network',    rank:169 },
+  'hook':               { sym:'HOOKUSDT',  base:'HOOK',  icon:'H', binance:'HOOKUSDT',  name:'Hooked Protocol',  rank:170 },
+  'highstreet':         { sym:'HIGHUSDT',  base:'HIGH',  icon:'H', binance:'HIGHUSDT',  name:'Highstreet',       rank:171 },
+  'qi-dao':             { sym:'QIUSDT',    base:'QI',    icon:'Q', binance:'QIUSDT',    name:'BENQI',            rank:172 },
+  'acala':              { sym:'ACAUSDT',   base:'ACA',   icon:'A', binance:'ACAUSDT',   name:'Acala',            rank:173 },
+  'calamari-network':   { sym:'KMAUSDT',   base:'KMA',   icon:'K', binance:'KMAUSDT',   name:'Calamari Network', rank:174 },
+  'tomb':               { sym:'TOMBUSDT',  base:'TOMB',  icon:'T', binance:'TOMBUSDT',  name:'Tomb',             rank:175 },
+  'trisolaris':         { sym:'TRIUSDT',   base:'TRI',   icon:'T', binance:'TRIUSDT',   name:'Trisolaris',       rank:176 },
+  'olympus':            { sym:'OHMUSDT',   base:'OHM',   icon:'Ω', binance:'OHMUSDT',   name:'Olympus',          rank:177 },
+  'liquity':            { sym:'LQTYUSDT',  base:'LQTY',  icon:'L', binance:'LQTYUSDT',  name:'Liquity',          rank:178 },
+  'origin-dollar':      { sym:'OUSDUSDT',  base:'OUSD',  icon:'O', binance:'OUSDUSDT',  name:'Origin Dollar',    rank:179 },
+  'origin-story':       { sym:'OGSUSDT',   base:'OGS',   icon:'O', binance:'OGSUSDT',   name:'Origin DeFi',      rank:180 },
+  'premia':             { sym:'PREMIAUSDT',base:'PREMIA',icon:'P', binance:'PREMIAUSDT',name:'Premia',           rank:181 },
+  'tokemak':            { sym:'TOKEUSDT',  base:'TOKE',  icon:'T', binance:'TOKEUSDT',  name:'Tokemak',          rank:182 },
+  'index-cooperative':  { sym:'INDEXUSDT', base:'INDEX', icon:'I', binance:'INDEXUSDT', name:'Index Coop',       rank:183 },
+  'opyn':               { sym:'SQUEETHUSDT',base:'oSQTH',icon:'S', binance:'SQUEETHUSDT',name:'Opyn Squeeth',    rank:184 },
+  'hashflow':           { sym:'HFTUSDT',   base:'HFT',   icon:'H', binance:'HFTUSDT',   name:'Hashflow',         rank:185 },
+  'apecoin':            { sym:'APEUSDT',   base:'APE',   icon:'🐒',binance:'APEUSDT',   name:'ApeCoin',          rank:186 },
+  'bonk':               { sym:'BONKUSDT',  base:'BONK',  icon:'🐶',binance:'BONKUSDT',  name:'Bonk',             rank:187 },
+  'celestia':           { sym:'TIAUSDT',   base:'TIA',   icon:'T', binance:'TIAUSDT',   name:'Celestia',         rank:188 },
+  'jito':               { sym:'JTOUSDT',   base:'JTO',   icon:'J', binance:'JTOUSDT',   name:'Jito',             rank:189 },
+  'pyth-network':       { sym:'PYTHUSDT',  base:'PYTH',  icon:'P', binance:'PYTHUSDT',  name:'Pyth Network',     rank:190 },
+  'wormhole':           { sym:'WUSDT',     base:'W',     icon:'W', binance:'WUSDT',     name:'Wormhole',         rank:191 },
+  'jupiter':            { sym:'JUPUSDT',   base:'JUP',   icon:'J', binance:'JUPUSDT',   name:'Jupiter',          rank:192 },
+  'tensor':             { sym:'TNSR',      base:'TNSR',  icon:'T', binance:'TNSRUSDT',  name:'Tensor',           rank:193 },
+  'parcl':              { sym:'PARCELUSDT',base:'PARCL', icon:'P', binance:'PARCLUSDT', name:'Parcl',            rank:194 },
+  'notcoin':            { sym:'NOTUSDT',   base:'NOT',   icon:'N', binance:'NOTUSDT',   name:'Notcoin',          rank:195 },
+  'dogwifhat':          { sym:'WIFUSDT',   base:'WIF',   icon:'🐕',binance:'WIFUSDT',   name:'dogwifhat',        rank:196 },
+  'io-net':             { sym:'IOUSDT',    base:'IO',    icon:'I', binance:'IOUSDT',    name:'io.net',           rank:197 },
+  'zksync':             { sym:'ZKUSDT',    base:'ZK',    icon:'Z', binance:'ZKUSDT',    name:'zkSync',           rank:198 },
+  'blast':              { sym:'BLASTUSDT', base:'BLAST', icon:'B', binance:'BLASTUSDT', name:'Blast',            rank:199 },
+  'lista-dao':          { sym:'LISTAUSDT', base:'LISTA', icon:'L', binance:'LISTAUSDT', name:'Lista DAO',        rank:200 },
+};
+
+// Full coin list for search (will be populated)
+let allCoins = Object.entries(COIN_META).map(([id, m]) => ({
+  id, symbol: m.base, name: m.name, image: null, rank: m.rank
+}));
+
+let coinsLoaded = false;
+
+async function loadTop300Coins() {
+  // Check weekly cache
+  const cached = localStorage.getItem(COINS_CACHE_KEY);
+  const cachedTs = parseInt(localStorage.getItem(COINS_CACHE_TS_KEY) || '0');
+  if (cached && (Date.now() - cachedTs < WEEK_MS)) {
+    try {
+      allCoins = JSON.parse(cached);
+      mergeCoinMeta(allCoins);
+      coinsLoaded = true;
+      populateChartCoinSelect();
+      return;
+    } catch(e) {}
+  }
+
+  // Fetch from CryptoCompare — works in Iran, 2 pages = 200 coins
+  try {
+    let results = [];
+    for (const page of [0, 1]) {
+      const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/cryptocompare/data/top/mktcapfull?limit=100&page=${page}&tsym=USD`;
+      const res = await fetchWithTimeout(url, 12000);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const coins = (json.Data || []).map((c, i) => ({
+        id: c.CoinInfo.Name.toLowerCase(),
+        symbol: c.CoinInfo.Name.toUpperCase(),
+        name: c.CoinInfo.FullName,
+        image: c.CoinInfo.ImageUrl ? `https://www.cryptocompare.com${c.CoinInfo.ImageUrl}` : null,
+        rank: page * 100 + i + 1
+      }));
+      results = results.concat(coins);
+      if (page === 0) await new Promise(r => setTimeout(r, 200));
+    }
+    allCoins = results;
+    localStorage.setItem(COINS_CACHE_KEY, JSON.stringify(results));
+    localStorage.setItem(COINS_CACHE_TS_KEY, Date.now().toString());
+    mergeCoinMeta(results);
+    coinsLoaded = true;
+    populateChartCoinSelect();
+  } catch(e) {
+    console.warn('Could not load coins:', e);
+    coinsLoaded = true; // use fallback
+  }
+}
+
+function mergeCoinMeta(coins) {
+  coins.forEach(c => {
+    // Try to find existing entry by symbol match
+    const existingKey = Object.keys(COIN_META).find(k => COIN_META[k].base === c.symbol);
+    if (existingKey) {
+      if (c.image) COIN_META[existingKey].image = c.image;
+      COIN_META[existingKey].rank = c.rank;
+    } else {
+      const sym = c.symbol.toUpperCase();
+      const key = c.id || sym.toLowerCase();
+      COIN_META[key] = {
+        sym: sym + 'USDT', base: sym,
+        icon: sym.slice(0,2),
+        binance: sym + 'USDT', name: c.name, rank: c.rank,
+        image: c.image || null
+      };
+    }
+  });
+}
+
+function populateChartCoinSelect() {
+  // Pre-populate the chart coin dropdown list
+  renderChartCoinList(allCoins.slice(0, 200));
+}
+
+// ── COIN SEARCH DROPDOWN ──
+let coinDropdownOpen = false;
+
+function openCoinDropdown() {
+  filterCoins();
+  document.getElementById('coin-dropdown').classList.add('open');
+  coinDropdownOpen = true;
+}
+
+function closeCoinDropdown() {
+  document.getElementById('coin-dropdown').classList.remove('open');
+  coinDropdownOpen = false;
+}
+
+function filterCoins() {
+  const q = document.getElementById('coin-search-input').value.trim().toLowerCase();
+  const filtered = q
+    ? allCoins.filter(c =>
+        c.symbol.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q)
+      ).slice(0, 30)
+    : allCoins.slice(0, 30);
+
+  const dd = document.getElementById('coin-dropdown');
+  dd.classList.add('open');
+  dd.innerHTML = filtered.map(c => `
+    <div class="coin-option" onclick="selectCoinOption('${c.id}','${c.symbol}','${c.name.replace(/'/g,"\\'")}')">
+      ${c.image ? `<img class="coin-option-icon" src="${c.image}" onerror="this.style.display='none'" />` : `<span class="coin-option-icon" style="display:flex;align-items:center;justify-content:center;font-size:10px">${c.symbol.slice(0,2)}</span>`}
+      <span class="coin-option-rank">#${c.rank}</span>
+      <span class="coin-option-name">${c.name}</span>
+      <span class="coin-option-sym">${c.symbol}</span>
+    </div>
+  `).join('');
+}
+
+function selectCoinOption(id, symbol, name) {
+  document.getElementById('m-pair').value = id;
+  document.getElementById('coin-search-input').value = `${symbol} — ${name}`;
+  closeCoinDropdown();
+  updatePairPreview();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.coin-search-wrap')) closeCoinDropdown();
+});
+
+// ═══════════════════════════════════════════════
+// NOTIFICATION CHANNELS CONFIG
+// ═══════════════════════════════════════════════
+let tgCfg    = JSON.parse(localStorage.getItem('tg_cfg')      || 'null');
+let discordCfg = JSON.parse(localStorage.getItem('discord_cfg') || 'null');
+let smsCfg   = JSON.parse(localStorage.getItem('sms_cfg')     || 'null');
+
+function openNotifChannels() {
+  // Fill in saved values
+  if (emailCfg) {
+    document.getElementById('nc-ej-public-key').value  = emailCfg.publicKey  || '';
+    document.getElementById('nc-ej-service-id').value  = emailCfg.serviceId  || '';
+    document.getElementById('nc-ej-template-id').value = emailCfg.templateId || '';
+    document.getElementById('nc-ej-to-email').value    = emailCfg.toEmail    || '';
+  }
+  if (tgCfg) {
+    document.getElementById('nc-tg-token').value  = tgCfg.token  || '';
+    document.getElementById('nc-tg-chatid').value = tgCfg.chatId || '';
+  }
+  if (discordCfg) {
+    document.getElementById('nc-discord-url').value = discordCfg.url || '';
+  }
+  if (smsCfg) {
+    document.getElementById('nc-kav-apikey').value   = smsCfg.apiKey   || '';
+    document.getElementById('nc-kav-receptor').value = smsCfg.receptor || '';
+  }
+  refreshNotifChannelUI();
+  document.getElementById('notif-modal').classList.add('open');
+}
+
+function closeNotifChannels() {
+  document.getElementById('notif-modal').classList.remove('open');
+}
+
+function refreshNotifChannelUI() {
+  // Browser
+  const perm = Notification.permission;
+  const browserOk = perm === 'granted';
+  document.getElementById('nc-browser-status').textContent = browserOk ? 'ON' : (perm === 'denied' ? 'BLOCKED' : 'OFF');
+  document.getElementById('nc-browser-status').className = 'notif-channel-status ' + (browserOk ? 'ok' : 'off');
+  document.getElementById('nc-browser').className = 'notif-channel' + (browserOk ? ' configured' : '');
+  document.getElementById('nc-browser-btn').textContent = browserOk ? '✓ فعال' : (perm === 'denied' ? '⚠ مسدود شده' : 'درخواست دسترسی');
+
+  // Email
+  const emailOk = !!emailCfg?.toEmail;
+  setChannelStatus('nc-email', emailOk);
+  document.getElementById('nc-email-clear').style.display = emailOk ? '' : 'none';
+
+  // Telegram
+  const tgOk = !!(tgCfg?.token && tgCfg?.chatId);
+  setChannelStatus('nc-telegram', tgOk, 'nc-tg-status');
+  document.getElementById('nc-tg-clear').style.display = tgOk ? '' : 'none';
+
+  // Discord
+  const discordOk = !!discordCfg?.url;
+  setChannelStatus('nc-discord', discordOk, 'nc-discord-status');
+  document.getElementById('nc-discord-clear').style.display = discordOk ? '' : 'none';
+
+  // SMS
+  const smsOk = !!(smsCfg?.apiKey && smsCfg?.receptor);
+  setChannelStatus('nc-sms', smsOk, 'nc-sms-status');
+  document.getElementById('nc-sms-clear').style.display = smsOk ? '' : 'none';
+
+  // Header dot
+  const anyOn = emailOk || tgOk || discordOk || smsOk || browserOk;
+  document.getElementById('notif-active-dot').style.display = anyOn ? '' : 'none';
+
+  // Update modal checkboxes sub-labels
+  document.getElementById('chk-email-sub').textContent = emailOk ? (emailCfg.toEmail) : (currentLang === 'fa' ? 'نیاز به تنظیم' : 'Needs setup');
+  document.getElementById('chk-tg-sub').textContent    = tgOk    ? 'تنظیم شده ✓'   : (currentLang === 'fa' ? 'نیاز به تنظیم' : 'Needs setup');
+  document.getElementById('chk-discord-sub').textContent = discordOk ? 'تنظیم شده ✓' : (currentLang === 'fa' ? 'نیاز به تنظیم' : 'Needs setup');
+  document.getElementById('chk-sms-sub').textContent   = smsOk   ? 'تنظیم شده ✓'   : (currentLang === 'fa' ? 'نیاز به تنظیم' : 'Needs setup');
+}
+
+function setChannelStatus(channelId, ok, statusId) {
+  const sId = statusId || (channelId.replace('nc-','nc-') + '-status');
+  const statusEl = document.getElementById(sId || channelId + '-status');
+  if (statusEl) { statusEl.textContent = ok ? 'ON' : 'OFF'; statusEl.className = 'notif-channel-status ' + (ok ? 'ok' : 'off'); }
+  const card = document.getElementById(channelId);
+  if (card) card.className = 'notif-channel' + (ok ? ' configured' : '');
+}
+
+function requestBrowserNotif() {
+  if (Notification.permission === 'denied') { showToast('نوتیف مرورگر توسط مرورگر مسدود شده — تنظیمات مرورگر رو چک کن', 'error'); return; }
+  Notification.requestPermission().then(() => refreshNotifChannelUI());
+}
+
+// ── Telegram ──
+function saveTelegram() {
+  const token  = document.getElementById('nc-tg-token').value.trim();
+  const chatId = document.getElementById('nc-tg-chatid').value.trim();
+  if (!token || !chatId) { showToast('Token و Chat ID رو پر کن', 'error'); return; }
+  tgCfg = { token, chatId };
+  localStorage.setItem('tg_cfg', JSON.stringify(tgCfg));
+  refreshNotifChannelUI();
+  showToast('Telegram ذخیره شد ✓', 'success');
+}
+
+async function sendTelegram(message) {
+  if (!tgCfg) return;
+  try {
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/telegram/bot${tgCfg.token}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: tgCfg.chatId, text: message, parse_mode: 'HTML' })
+    });
+  } catch(e) { console.warn('Telegram send failed:', e); }
+}
+
+async function testTelegram() {
+  const token  = document.getElementById('nc-tg-token').value.trim();
+  const chatId = document.getElementById('nc-tg-chatid').value.trim();
+  if (!token || !chatId) { showToast('Token و Chat ID رو پر کن', 'error'); return; }
+  showToast('در حال ارسال تست...', 'info');
+  try {
+    const res = await fetch(`https://crypto-proxy.mahditavakoli7777.workers.dev/telegram/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: '✅ CryptoAlert — تست موفق!\n\n🔔 این یه پیام آزمایشی است.', parse_mode: 'HTML' })
+    });
+    const data = await res.json();
+    if (data.ok) showToast('پیام تست ارسال شد ✓', 'success');
+    else showToast('خطا: ' + (data.description || 'نامشخص'), 'error');
+  } catch(e) { showToast('خطای شبکه: ' + e.message, 'error'); }
+}
+
+// ── Discord ──
+function saveDiscord() {
+  const url = document.getElementById('nc-discord-url').value.trim();
+  if (!url || !url.startsWith('https://discord.com/api/webhooks/')) { showToast('Webhook URL معتبر نیست', 'error'); return; }
+  discordCfg = { url };
+  localStorage.setItem('discord_cfg', JSON.stringify(discordCfg));
+  refreshNotifChannelUI();
+  showToast('Discord ذخیره شد ✓', 'success');
+}
+
+async function sendDiscord(message, coin, currentPrice, targetPrice) {
+  if (!discordCfg) return;
+  try {
+    await fetch(discordCfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '🔔 CryptoAlert',
+          description: message,
+          color: 0x22c55e,
+          fields: [
+            { name: 'ارز', value: coin, inline: true },
+            { name: 'قیمت فعلی', value: currentPrice, inline: true },
+            { name: 'قیمت هدف', value: targetPrice, inline: true }
+          ],
+          timestamp: new Date().toISOString()
+        }]
+      })
+    });
+  } catch(e) { console.warn('Discord send failed:', e); }
+}
+
+async function testDiscord() {
+  const url = document.getElementById('nc-discord-url').value.trim();
+  if (!url) { showToast('Webhook URL رو وارد کن', 'error'); return; }
+  showToast('در حال ارسال تست...', 'info');
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: '✅ **CryptoAlert** — تست موفق!\n🔔 این یه پیام آزمایشی است.' })
+    });
+    if (res.ok) showToast('پیام تست ارسال شد ✓', 'success');
+    else showToast('خطا در ارسال — کد: ' + res.status, 'error');
+  } catch(e) { showToast('خطای شبکه: ' + e.message, 'error'); }
+}
+
+// ── Kavenegar SMS ──
+function saveSMS() {
+  const apiKey   = document.getElementById('nc-kav-apikey').value.trim();
+  const receptor = document.getElementById('nc-kav-receptor').value.trim();
+  if (!apiKey || !receptor) { showToast('API Key و شماره موبایل رو پر کن', 'error'); return; }
+  smsCfg = { apiKey, receptor };
+  localStorage.setItem('sms_cfg', JSON.stringify(smsCfg));
+  refreshNotifChannelUI();
+  showToast('SMS ذخیره شد ✓', 'success');
+}
+
+async function sendSMS(message) {
+  if (!smsCfg) return;
+  try {
+    const url = `https://api.kavenegar.com/v1/${smsCfg.apiKey}/sms/send.json`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `receptor=${encodeURIComponent(smsCfg.receptor)}&message=${encodeURIComponent(message)}&sender=2000660110`
+    });
+  } catch(e) { console.warn('SMS send failed:', e); }
+}
+
+async function testSMS() {
+  const apiKey   = document.getElementById('nc-kav-apikey').value.trim();
+  const receptor = document.getElementById('nc-kav-receptor').value.trim();
+  if (!apiKey || !receptor) { showToast('API Key و شماره موبایل رو پر کن', 'error'); return; }
+  showToast('در حال ارسال پیامک تست...', 'info');
+  try {
+    const url = `https://api.kavenegar.com/v1/${apiKey}/sms/send.json`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `receptor=${encodeURIComponent(receptor)}&message=${encodeURIComponent('CryptoAlert: تست موفق!')}&sender=2000660110`
+    });
+    const data = await res.json();
+    if (data.return?.status === 200) showToast('پیامک تست ارسال شد ✓', 'success');
+    else showToast('خطا: ' + (data.return?.message || 'نامشخص'), 'error');
+  } catch(e) { showToast('خطای شبکه: ' + e.message, 'error'); }
+}
+
+// ── Email from NC modal ──
+function saveEmailFromNC() {
+  const publicKey  = document.getElementById('nc-ej-public-key').value.trim();
+  const serviceId  = document.getElementById('nc-ej-service-id').value.trim();
+  const templateId = document.getElementById('nc-ej-template-id').value.trim();
+  const toEmail    = document.getElementById('nc-ej-to-email').value.trim();
+  if (!publicKey||!serviceId||!templateId||!toEmail) { showToast('همه فیلدها رو پر کن', 'error'); return; }
+  emailCfg = { publicKey, serviceId, templateId, toEmail };
+  localStorage.setItem('email_cfg', JSON.stringify(emailCfg));
+  if (typeof emailjs !== 'undefined') emailjs.init({ publicKey });
+  refreshNotifChannelUI();
+  updateEmailBanner();
+  showToast('ایمیل ذخیره شد ✓', 'success');
+}
+
+async function testEmailFromNC() {
+  const publicKey  = document.getElementById('nc-ej-public-key').value.trim();
+  const serviceId  = document.getElementById('nc-ej-service-id').value.trim();
+  const templateId = document.getElementById('nc-ej-template-id').value.trim();
+  const toEmail    = document.getElementById('nc-ej-to-email').value.trim();
+  if (!publicKey||!serviceId||!templateId||!toEmail) { showToast('همه فیلدها رو پر کن', 'error'); return; }
+  showToast('در حال ارسال تست...', 'info');
+  try {
+    if (typeof emailjs !== 'undefined') emailjs.init({ publicKey });
+    await emailjs.send(serviceId, templateId, { to_email:toEmail, subject:'✅ CryptoAlert Test', message:'Connection successful!', coin:'BTC', current_price:'$65,000', target_price:'$70,000' });
+    showToast('ایمیل تست ارسال شد ✓', 'success');
+  } catch(e) { showToast('Error: '+(e.text||e.message), 'error'); }
+}
+
+function clearChannel(ch) {
+  if (ch === 'email')    { emailCfg = null;    localStorage.removeItem('email_cfg');    updateEmailBanner(); }
+  if (ch === 'telegram') { tgCfg    = null;    localStorage.removeItem('tg_cfg'); }
+  if (ch === 'discord')  { discordCfg = null;  localStorage.removeItem('discord_cfg'); }
+  if (ch === 'sms')      { smsCfg   = null;    localStorage.removeItem('sms_cfg'); }
+  refreshNotifChannelUI();
+  showToast('حذف شد', 'error');
+}
+
+// ── Per-alert notif toggles ──
+let alertNotifState = { browser: true, email: false, telegram: false, discord: false, sms: false };
+
+function toggleAlertNotif(ch) {
+  alertNotifState[ch] = !alertNotifState[ch];
+  updateToggleUI('chk-' + (ch === 'telegram' ? 'telegram' : ch === 'sms' ? 'sms' : ch === 'discord' ? 'discord' : ch === 'email' ? 'email' : 'browser'), alertNotifState[ch]);
+}
+
+function syncAlertNotifCheck() { /* unused, kept for compat */ }
+
+function openModalNotifState(alert) {
+  const notif = alert?.notif || { browser: true };
+  alertNotifState = {
+    browser:  notif.browser  !== false,
+    email:    !!(notif.email    || alert?.emailOn),
+    telegram: !!notif.telegram,
+    discord:  !!notif.discord,
+    sms:      !!notif.sms,
+  };
+  updateToggleUI('chk-browser',  alertNotifState.browser);
+  updateToggleUI('chk-email',    alertNotifState.email);
+  updateToggleUI('chk-telegram', alertNotifState.telegram);
+  updateToggleUI('chk-discord',  alertNotifState.discord);
+  updateToggleUI('chk-sms',      alertNotifState.sms);
+  // sublabel texts
+  const emailOk = !!emailCfg?.toEmail;
+  const tgOk    = !!(tgCfg?.token && tgCfg?.chatId);
+  const dOk     = !!discordCfg?.url;
+  const smsOk   = !!(smsCfg?.apiKey && smsCfg?.receptor);
+  const el = id => document.getElementById(id);
+  if (el('chk-email-sub'))   el('chk-email-sub').textContent   = emailOk ? emailCfg.toEmail : (currentLang==='fa'?'نیاز به تنظیم':'Needs setup');
+  if (el('chk-tg-sub'))      el('chk-tg-sub').textContent      = tgOk    ? 'تنظیم شده ✓'  : (currentLang==='fa'?'نیاز به تنظیم':'Needs setup');
+  if (el('chk-discord-sub')) el('chk-discord-sub').textContent = dOk     ? 'تنظیم شده ✓'  : (currentLang==='fa'?'نیاز به تنظیم':'Needs setup');
+  if (el('chk-sms-sub'))     el('chk-sms-sub').textContent     = smsOk   ? 'تنظیم شده ✓'  : (currentLang==='fa'?'نیاز به تنظیم':'Needs setup');
+}
+
+function getModalNotifState() {
+  return { ...alertNotifState };
+}
+
+
+let prices = {};
+let alerts = JSON.parse(localStorage.getItem('crypto_alerts') || '[]');
+let selectedDir = 'above';
+let alertEmailOn = false;
+let alertReminderOn = false;
+let editingId = null;
+let emailCfg = JSON.parse(localStorage.getItem('email_cfg') || 'null');
+const notifiedIds = new Set();
+
+// Chart state
+let lwChart = null;
+let candleSeries = null;
+let currentChartCoin = 'bitcoin';
+let currentTf = '15m';
+let chartCandles = [];
+let linePrice = null;
+let isDragging = false;
+let dragStartY = null;
+let chartHeight = 340;
+
+// Kraken WS
+const KRAKEN_PAIRS = {
+  'bitcoin':'XBT/USDT','ethereum':'ETH/USDT','binancecoin':'BNB/USDT',
+  'solana':'SOL/USDT','ripple':'XRP/USDT','dogecoin':'DOGE/USDT',
+  'cardano':'ADA/USDT','avalanche-2':'AVAX/USDT','litecoin':'LTC/USDT','polkadot':'DOT/USDT',
+};
+const KRAKEN_REVERSE = {};
+Object.entries(KRAKEN_PAIRS).forEach(([g, s]) => { KRAKEN_REVERSE[s] = g; });
+let krakenWs = null;
+let krakenConnected = false;
+let fetchInterval = null;
+
+// CoinGecko URL for price fetching (only base 10 coins for real-time)
+function buildGeckoUrl() {
+  const ids = Object.keys(COIN_META).slice(0, 50).join(',');
+  return `https://crypto-proxy.mahditavakoli7777.workers.dev/coingecko/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
+}
+
+// ═══════════════════════════════════════════════
+// FORMAT
+// ═══════════════════════════════════════════════
+function formatPrice(p, geckoId) {
+  if (p === null || p === undefined || isNaN(p)) return '—';
+  const base = geckoId ? COIN_META[geckoId]?.base : '';
+  if (p < 0.0001) return '$' + p.toFixed(8);
+  if (p < 0.01) return '$' + p.toFixed(6);
+  if (p < 1) return '$' + p.toFixed(4);
+  if (p > 1000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$' + p.toFixed(3);
+}
+
+// ═══════════════════════════════════════════════
+// CHART INIT — FIX #1: wait for LightweightCharts
+// ═══════════════════════════════════════════════
+function waitForLWC(cb, attempt = 0) {
+  if (typeof LightweightCharts !== 'undefined') { cb(); return; }
+  if (attempt > 40) {
+    document.getElementById('chart-loading').textContent = 'خطا: کتابخانه چارت بارگذاری نشد';
+    return;
+  }
+  setTimeout(() => waitForLWC(cb, attempt + 1), 150);
+}
+
+function initChart() {
+  const mount = document.getElementById('lwc-mount');
+  mount.innerHTML = '';
+  const isDark = currentTheme === 'dark';
+
+  lwChart = LightweightCharts.createChart(mount, {
+    width: mount.clientWidth,
+    height: mount.clientHeight || chartHeight,
+    layout: {
+      background: { color: isDark ? '#111111' : '#ffffff' },
+      textColor: isDark ? '#666' : '#888'
+    },
+    grid: {
+      vertLines: { color: isDark ? '#1a1a1a' : '#eeeeee' },
+      horzLines: { color: isDark ? '#1a1a1a' : '#eeeeee' }
+    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: isDark ? '#2a2a2a' : '#dddddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
+    timeScale: { borderColor: isDark ? '#2a2a2a' : '#dddddd', timeVisible: true, secondsVisible: false },
+    handleScroll: true,
+    handleScale: true,
+  });
+
+  candleSeries = lwChart.addCandlestickSeries({
+    upColor: '#22c55e', downColor: '#ef4444',
+    borderUpColor: '#22c55e', borderDownColor: '#ef4444',
+    wickUpColor: '#22c55e', wickDownColor: '#ef4444',
+  });
+
+  lwChart.subscribeCrosshairMove(param => {
+    if (!param.point || !candleSeries) return;
+    const price = candleSeries.coordinateToPrice(param.point.y);
+    if (price) updateChartPriceInfo(price);
+  });
+
+  const ro = new ResizeObserver(() => {
+    if (lwChart) lwChart.applyOptions({ width: mount.clientWidth });
+  });
+  ro.observe(mount);
+
+  setupDrawInteraction();
+}
+
+// ═══════════════════════════════════════════════
+// DRAW LINE INTERACTION
+// ═══════════════════════════════════════════════
+function setupDrawInteraction() {
+  const container = document.getElementById('chart-container');
+  const tooltip = document.getElementById('line-tooltip');
+  const pill = document.getElementById('set-alert-pill');
+  const mount = document.getElementById('lwc-mount');
+
+  function priceFromY(clientY) {
+    const rect = mount.getBoundingClientRect();
+    const y = clientY - rect.top;
+    if (!candleSeries) return null;
+    return candleSeries.coordinateToPrice(y);
+  }
+
+  function yFromPrice(price) {
+    if (!candleSeries) return null;
+    return candleSeries.priceToCoordinate(price);
+  }
+
+  function showLine(price) {
+    linePrice = price;
+    const y = yFromPrice(price);
+    if (y === null) return;
+
+    const currentPrice = prices[currentChartCoin];
+    const dir = currentPrice && price > currentPrice ? (currentLang === 'fa' ? '↑ بالاتر' : '↑ Above') : (currentLang === 'fa' ? '↓ پایین‌تر' : '↓ Below');
+    tooltip.textContent = `${dir} ${formatPrice(price, currentChartCoin)}`;
+    tooltip.style.top = y + 'px';
+    tooltip.style.display = 'block';
+
+    // FIX #2: pill positioning — clamp inside chart bounds
+    const containerH = container.clientHeight;
+    const pillH = 38;
+    const pillTop = Math.min(Math.max(y + 10, 8), containerH - pillH - 8);
+    pill.style.top = pillTop + 'px';
+    pill.style.bottom = 'auto';
+    pill.style.display = 'block';
+
+    if (container._alertPriceLine) {
+      try { candleSeries.removePriceLine(container._alertPriceLine); } catch(e) {}
+    }
+    const currentP = prices[currentChartCoin];
+    const lineColor = (currentP && price > currentP) ? '#22c55e' : '#ef4444';
+    container._alertPriceLine = candleSeries.createPriceLine({
+      price, color: lineColor, lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true, title: '🔔',
+    });
+  }
+
+  function hideLine() {
+    tooltip.style.display = 'none';
+    pill.style.display = 'none';
+    if (container._alertPriceLine) {
+      try { candleSeries.removePriceLine(container._alertPriceLine); } catch(e) {}
+      container._alertPriceLine = null;
+    }
+    linePrice = null;
+    isDragging = false;
+  }
+
+  mount.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    isDragging = true;
+    dragStartY = e.clientY;
+    const p = priceFromY(e.clientY);
+    if (p) showLine(p);
+  }, { passive: true });
+
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const p = priceFromY(e.clientY);
+    if (p) showLine(p);
+  });
+
+  window.addEventListener('mouseup', e => {
+    if (!isDragging) return;
+    isDragging = false;
+  });
+
+  mount.addEventListener('touchstart', e => {
+    isDragging = true;
+    dragStartY = e.touches[0].clientY;
+    const p = priceFromY(e.touches[0].clientY);
+    if (p) showLine(p);
+  }, { passive: true });
+
+  mount.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const p = priceFromY(e.touches[0].clientY);
+    if (p) showLine(p);
+  }, { passive: false });
+
+  mount.addEventListener('touchend', () => { isDragging = false; });
+
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') hideLine(); });
+
+  // hide when tapping/clicking outside the chart container
+  document.addEventListener('pointerdown', e => {
+    if (!linePrice) return;
+    if (!container.contains(e.target) && e.target.id !== 'set-alert-pill') {
+      hideLine();
+    }
+  }, { passive: true });
+
+  container._hideLine = hideLine;
+}
+
+function confirmLineAlert() {
+  if (!linePrice) return;
+  const currentPrice = prices[currentChartCoin];
+  const dir = (currentPrice && linePrice > currentPrice) ? 'above' : 'below';
+  const meta = COIN_META[currentChartCoin];
+  document.getElementById('m-pair').value = currentChartCoin;
+  document.getElementById('coin-search-input').value = meta ? `${meta.base} — ${meta.name || meta.base}` : currentChartCoin;
+  document.getElementById('m-price').value = linePrice.toFixed(linePrice < 1 ? 6 : linePrice < 10 ? 4 : 2);
+  selectDir(dir);
+  updatePairPreview();
+  openModalNotifState(null);
+  document.getElementById('modal-title').textContent = t('alertConfirm');
+  document.getElementById('modal').classList.add('open');
+  const container = document.getElementById('chart-container');
+  if (container._hideLine) container._hideLine();
+}
+
+// ═══════════════════════════════════════════════
+// CANDLE DATA — multi-source (Iran-compatible)
+// ═══════════════════════════════════════════════
+const CC_ENDPOINT = { '1m':'histominute','5m':'histominute','15m':'histominute','1h':'histohour','4h':'histohour','1d':'histoday' };
+const CC_AGG      = { '1m':1,'5m':5,'15m':15,'1h':1,'4h':4,'1d':1 };
+const TF_LIMIT    = { '1m':120,'5m':100,'15m':100,'1h':100,'4h':100,'1d':100 };
+const TF_MAP      = { '1m':'1min','5m':'5min','15m':'15min','1h':'1hour','4h':'4hour','1d':'1day' };
+const TF_MAP_BINANCE = { '1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d' };
+
+async function fetchCandles(geckoId, tf) {
+  const meta = COIN_META[geckoId];
+  if (!meta) return [];
+  const sym = meta.base;
+  const limit = TF_LIMIT[tf] || 100;
+  const errors = [];
+
+  // ── map source name → fetch function ──
+  async function tryBinance() {
+    const tfB = TF_MAP_BINANCE[tf] || '15m';
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/binance/api/v3/klines?symbol=${sym}USDT&interval=${tfB}&limit=${limit}`;
+    const res = await fetchWithRetry(url, 8000, 1);
+    if (!res) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) return null;
+    return data.map(k => ({ time: Math.floor(k[0]/1000), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]) }));
+  }
+
+  async function tryBybit() {
+    const intervalMap = {'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D'};
+    const interval = intervalMap[tf] || '15';
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/bybit/v5/market/kline?category=spot&symbol=${sym}USDT&interval=${interval}&limit=${limit}`;
+    const res = await fetchWithRetry(url, 8000, 1);
+    if (!res) return null;
+    const rows = (await res.json())?.result?.list;
+    if (!rows?.length) return null;
+    return [...rows].reverse().map(k => ({ time: Math.floor(parseInt(k[0])/1000), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]) }));
+  }
+
+  async function tryCryptoCompare() {
+    const ep  = CC_ENDPOINT[tf] || 'histominute';
+    const agg = CC_AGG[tf] || 1;
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/cryptocompare/data/v2/${ep}?fsym=${sym}&tsym=USD&limit=${limit}&aggregate=${agg}`;
+    const res = await fetchWithRetry(url, 9000, 1);
+    if (!res) return null;
+    const rows = (await res.json())?.Data?.Data;
+    if (!rows?.length) return null;
+    return rows.filter(k => k.open > 0).map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
+  }
+
+  async function tryKuCoin() {
+    const kuType = TF_MAP[tf] || '15min';
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/kucoin/api/v1/market/candles?type=${kuType}&symbol=${sym}-USDT`;
+    const res = await fetchWithRetry(url, 8000, 1);
+    if (!res) return null;
+    const data = (await res.json())?.data;
+    if (!data?.length) return null;
+    return data.slice(0, limit).reverse().map(k => ({ time: parseInt(k[0]), open: parseFloat(k[1]), close: parseFloat(k[2]), high: parseFloat(k[3]), low: parseFloat(k[4]) }));
+  }
+
+  async function tryCoinGecko() {
+    const daysMap = {'1m':1,'5m':1,'15m':1,'1h':7,'4h':14,'1d':30};
+    const days = daysMap[tf] || 1;
+    const url = `https://crypto-proxy.mahditavakoli7777.workers.dev/coingecko/api/v3/coins/${geckoId}/ohlc?vs_currency=usd&days=${days}`;
+    const res = await fetchWithRetry(url, 10000, 1);
+    if (!res) return null;
+    let rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) return null;
+    if (rows.length > limit) { const step = Math.ceil(rows.length/limit); rows = rows.filter((_,i) => i%step===0); }
+    return rows.map(k => ({ time: Math.floor(k[0]/1000), open: k[1], high: k[2], low: k[3], close: k[4] }));
+  }
+
+  async function tryBinanceProxy() {
+    const tfB = TF_MAP_BINANCE[tf] || '15m';
+    const binUrl = `https://crypto-proxy.mahditavakoli7777.workers.dev/binance/api/v3/klines?symbol=${sym}USDT&interval=${tfB}&limit=${limit}`;
+    const res = await fetchWithRetry(`https://api.allorigins.win/raw?url=${encodeURIComponent(binUrl)}`, 12000, 1);
+    if (!res) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) return null;
+    return data.map(k => ({ time: Math.floor(k[0]/1000), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]) }));
+  }
+
+  // ── source → fetch fn map (only sources that support OHLC) ──
+  const sourceFnMap = {
+    binance: tryBinance,
+    bybit: tryBybit,
+    cryptocompare: tryCryptoCompare,
+    kucoin: tryKuCoin,
+    coingecko: tryCoinGecko,
+  };
+
+  // ── if manual source selected and it supports OHLC, try it first ──
+  const manualFn = sourceFnMap[selectedPriceSource];
+  if (selectedPriceSource !== 'auto' && manualFn) {
+    try {
+      const candles = await manualFn();
+      if (candles?.length) return candles;
+      errors.push(selectedPriceSource + ': failed');
+    } catch(e) { errors.push(selectedPriceSource + ': ' + e.message); }
+  }
+
+  // ── Auto fallback order ──
+  const autoOrder = [
+    ['Binance',       tryBinance],
+    ['Bybit',         tryBybit],
+    ['CryptoCompare', tryCryptoCompare],
+    ['KuCoin',        tryKuCoin],
+    ['CoinGecko',     tryCoinGecko],
+    ['Binance Proxy', tryBinanceProxy],
+  ];
+
+  for (const [name, fn] of autoOrder) {
+    // skip if already tried as manual
+    if (sourceFnMap[selectedPriceSource] === fn && selectedPriceSource !== 'auto') continue;
+    try {
+      const candles = await fn();
+      if (candles?.length) return candles;
+      errors.push(name + ': empty');
+    } catch(e) { errors.push(name + ': ' + e.message); }
+  }
+
+  console.warn('All chart sources failed:', sym, tf, errors);
+  return [];
+}
+
+async function loadChart(geckoId, tf) {
+  if (!lwChart) return;
+  const loadingEl = document.getElementById('chart-loading');
+  loadingEl.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><div class="chart-spinner"></div>${t('loadingChart')}</div>`;
+  loadingEl.style.display = 'flex';
+  candleSeries.setData([]);
+
+  // Retry up to 2 times automatically
+  let chartCandles = [];
+  for (let attempt = 0; attempt < 2 && !chartCandles.length; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+    chartCandles = await fetchCandles(geckoId, tf);
+  }
+
+  if (chartCandles.length) {
+    try { candleSeries.setData(chartCandles); } catch(e) {
+      // deduplicate timestamps if needed
+      const seen = new Set();
+      const deduped = chartCandles.filter(c => { if (seen.has(c.time)) return false; seen.add(c.time); return true; });
+      candleSeries.setData(deduped);
+      chartCandles = deduped;
+    }
+    lwChart.timeScale().fitContent();
+    loadingEl.style.display = 'none';
+    updateChartHeader(geckoId, chartCandles);
+    redrawAlertLines(geckoId);
+    window._lastChartCandles = chartCandles;
+  } else {
+    const retryLabel = currentLang === 'fa' ? '↻ تلاش مجدد' : '↻ Retry';
+    loadingEl.innerHTML = `<div style="text-align:center">
+      <div style="margin-bottom:8px">⚠️ ${t('chartError')}</div>
+      <button onclick="loadChart('${geckoId}','${tf}')" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px">${retryLabel}</button>
+    </div>`;
+  }
+}
+
+function updateChartHeader(geckoId, candles) {
+  if (!candles.length) return;
+  const last = candles[candles.length - 1];
+  const first = candles[0];
+  const chg = ((last.close - first.open) / first.open) * 100;
+  document.getElementById('chart-cur-price').textContent = formatPrice(last.close, geckoId);
+  const chgEl = document.getElementById('chart-change');
+  chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+  chgEl.className = 'chart-price-change ' + (chg >= 0 ? 'pos' : 'neg');
+}
+
+function updateChartPriceInfo(price) {
+  document.getElementById('chart-cur-price').textContent = formatPrice(price, currentChartCoin);
+}
+
+function redrawAlertLines(geckoId) {
+  if (!candleSeries || !lwChart) return;
+  if (!candleSeries._alertLines) candleSeries._alertLines = [];
+  candleSeries._alertLines.forEach(l => { try { candleSeries.removePriceLine(l); } catch(e){} });
+  candleSeries._alertLines = [];
+  const isDark = currentTheme !== 'light';
+  const lineColor = isDark ? '#ffffff' : '#000000';
+  const axisColor = isDark ? '#ffffff' : '#000000';
+  const axisTextColor = isDark ? '#000000' : '#ffffff';
+  alerts.filter(a => a.geckoId === geckoId && a.active).forEach(a => {
+    const line = candleSeries.createPriceLine({
+      price: a.target,
+      color: lineColor,
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      axisLabelVisible: true,
+      axisLabelColor: axisColor,
+      axisLabelTextColor: axisTextColor,
+      title: '◆ Alert',
+    });
+    candleSeries._alertLines.push(line);
+  });
+}
+
+function setTimeframe(tf) {
+  currentTf = tf;
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tf-' + tf).classList.add('active');
+  loadChart(currentChartCoin, tf);
+}
+
+function toggleChartCoinDropdown() {
+  const dd = document.getElementById('chart-coin-dropdown');
+  const isOpen = dd.classList.contains('open');
+  if (isOpen) { dd.classList.remove('open'); return; }
+  dd.classList.add('open');
+  document.getElementById('chart-coin-search').value = '';
+  renderChartCoinList(allCoins.slice(0, 200));
+  setTimeout(() => document.getElementById('chart-coin-search').focus(), 50);
+}
+
+function filterChartCoins() {
+  const q = document.getElementById('chart-coin-search').value.toLowerCase();
+  const filtered = allCoins.slice(0, 200).filter(c =>
+    c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q)
+  );
+  renderChartCoinList(filtered);
+}
+
+function renderChartCoinList(coins) {
+  const list = document.getElementById('chart-coin-list');
+  if (!coins.length) {
+    // also search in COIN_META static coins
+    list.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:12px">کوین پیدا نشد</div>';
+    return;
+  }
+  list.innerHTML = coins.map(c => {
+    const imgHtml = c.image
+      ? `<img src="${c.image}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'" />`
+      : `<div style="width:20px;height:20px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0">${c.symbol.slice(0,2)}</div>`;
+    const geckoId = c.id || c.symbol.toLowerCase();
+    return `<div class="coin-option" onclick="selectChartCoin('${geckoId}','${c.symbol}','${c.name.replace(/'/g,"\\'")}')">
+      ${imgHtml}
+      <span class="coin-option-rank">#${c.rank||'—'}</span>
+      <span class="coin-option-name">${c.name}</span>
+      <span class="coin-option-sym">${c.symbol}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectChartCoin(geckoId, symbol, name) {
+  document.getElementById('chart-coin-dropdown').classList.remove('open');
+  document.getElementById('chart-coin-label').textContent = symbol + ' ' + name.slice(0,10);
+  currentChartCoin = geckoId;
+  // Ensure COIN_META has this coin
+  if (!COIN_META[geckoId]) {
+    COIN_META[geckoId] = { base: symbol, sym: symbol+'USDT', binance: symbol+'USDT', name, icon: symbol.slice(0,2) };
+  }
+  loadChart(geckoId, currentTf);
+}
+
+function onChartCoinChange() {
+  currentChartCoin = document.getElementById('chart-coin-select')?.value || 'bitcoin';
+  loadChart(currentChartCoin, currentTf);
+}
+
+function updateLastCandle(geckoId, price) {
+  if (geckoId !== currentChartCoin || !candleSeries || !chartCandles.length) return;
+  const last = chartCandles[chartCandles.length - 1];
+  const updated = { ...last, close: price, high: Math.max(last.high, price), low: Math.min(last.low, price) };
+  chartCandles[chartCandles.length - 1] = updated;
+  try { candleSeries.update(updated); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+// PRICE FETCHING — CryptoCompare (Iran OK) + Nobitex WS live
+// ═══════════════════════════════════════════════
+function connectKraken() {
+  // Kraken blocked in Iran — skip directly to polling
+  startPolling();
+}
+
+// ═══════════════════════════════════════════════
+// PRICE SOURCE SELECTOR
+// ═══════════════════════════════════════════════
+let selectedPriceSource = localStorage.getItem('price_source') || 'auto';
+
+function setPriceSource(val) {
+  selectedPriceSource = val;
+  localStorage.setItem('price_source', val);
+  // show loading state on chart
+  const loading = document.getElementById('chart-loading');
+  if (loading) { loading.style.display = 'flex'; loading.textContent = `در حال بارگذاری از ${val === 'auto' ? 'Auto' : val}...`; }
+  setApiStatus('loading', val === 'auto' ? '🔄 Auto...' : val + '...');
+  // reload both
+  Promise.all([fetchPrices(), loadChart(currentChartCoin, currentTf)]);
+}
+
+async function fetchFromSource(source, coinEntries) {
+  const symToIdUSDT={}, symToIdDash={}, symToIdUnder={}, symToIdRls={}, symToIdTmn={}, symToIdCap={};
+  coinEntries.forEach(([id,m]) => {
+    symToIdUSDT[m.base+'USDT']            = id;
+    symToIdDash[m.base+'-USDT']           = id;
+    symToIdUnder[m.base+'_USDT']          = id;
+    symToIdRls[m.base.toLowerCase()+'-rls'] = id;
+    symToIdTmn[m.base.toUpperCase()+'TMN'] = id;
+    symToIdCap[m.base.toUpperCase()]       = id;
+  });
+  switch(source) {
+    case 'binance': {
+      const syms=[...new Set(coinEntries.map(([,m])=>m.base))].slice(0,50).map(b=>`"${b}USDT"`).join(',');
+      const res=await fetchWithTimeout(`https://crypto-proxy.mahditavakoli7777.workers.dev/binance/api/v3/ticker/price?symbols=[${syms}]`,6000);
+      if(!res?.ok) return null;
+      const data=await res.json();
+      return Array.isArray(data)?data.map(d=>({id:symToIdUSDT[d.symbol],price:parseFloat(d.price)})).filter(d=>d.id&&d.price):null;
+    }
+    case 'cryptocompare': {
+      const syms=[...new Set(coinEntries.map(([,m])=>m.base))].slice(0,100).join(',');
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/cryptocompare/data/pricemulti?fsyms=${syms}&tsyms=USD`,8000,1);
+      if(!res) return null;
+      const data=await res.json();
+      return coinEntries.map(([id,m])=>({id,price:data[m.base]?.USD})).filter(d=>d.price);
+    }
+    case 'bybit': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/bybit/v5/market/tickers?category=spot`,8000,1);
+      if(!res) return null;
+      const list=(await res.json())?.result?.list;
+      return list?.map(d=>({id:symToIdUSDT[d.symbol],price:parseFloat(d.lastPrice)})).filter(d=>d.id&&d.price)||null;
+    }
+    case 'kucoin': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/kucoin/api/v1/market/allTickers`,8000,1);
+      if(!res) return null;
+      const list=(await res.json())?.data?.ticker;
+      return list?.map(d=>({id:symToIdDash[d.symbol],price:parseFloat(d.last)})).filter(d=>d.id&&d.price)||null;
+    }
+    case 'okx': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/okx/api/v5/market/tickers?instType=SPOT`,8000,1);
+      if(!res) return null;
+      const list=(await res.json())?.data;
+      return list?.map(d=>({id:symToIdDash[d.instId],price:parseFloat(d.last)})).filter(d=>d.id&&d.price)||null;
+    }
+    case 'gateio': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/gateio/api/v4/spot/tickers`,8000,1);
+      if(!res) return null;
+      const list=await res.json();
+      return Array.isArray(list)?list.map(d=>({id:symToIdUnder[d.currency_pair],price:parseFloat(d.last)})).filter(d=>d.id&&d.price):null;
+    }
+    case 'mexc': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/mexc/api/v3/ticker/price`,8000,1);
+      if(!res) return null;
+      const list=await res.json();
+      return Array.isArray(list)?list.map(d=>({id:symToIdUSDT[d.symbol],price:parseFloat(d.price)})).filter(d=>d.id&&d.price):null;
+    }
+    case 'coincap': {
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/coincap/v2/assets?limit=200`,8000,1);
+      if(!res) return null;
+      const list=(await res.json())?.data;
+      return list?.map(d=>({id:symToIdCap[d.symbol?.toUpperCase()],price:parseFloat(d.priceUsd)})).filter(d=>d.id&&d.price)||null;
+    }
+    case 'coingecko': {
+      const ids=Object.keys(COIN_META).slice(0,50).join(',');
+      const res=await fetchWithRetry(`https://crypto-proxy.mahditavakoli7777.workers.dev/coingecko/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,10000,1);
+      if(!res) return null;
+      const data=await res.json();
+      return Object.keys(COIN_META).map(id=>({id,price:data[id]?.usd})).filter(d=>d.price);
+    }
+    case 'nobitex': {
+      const rateRes=await fetchWithTimeout('https://crypto-proxy.mahditavakoli7777.workers.dev/nobitex/market/stats?srcCurrency=usdt&dstCurrency=rls',6000);
+      if(!rateRes?.ok) return null;
+      const usdtRls=parseFloat((await rateRes.json())?.stats?.['usdt-rls']?.latest);
+      if(!usdtRls) return null;
+      const irtPerUsdt=usdtRls/10;
+      const tickerRes=await fetchWithTimeout('https://crypto-proxy.mahditavakoli7777.workers.dev/nobitex/market/stats',8000);
+      if(!tickerRes?.ok) return null;
+      const stats=(await tickerRes.json())?.stats||{};
+      return Object.entries(stats).map(([pair,d])=>({id:symToIdRls[pair],price:(parseFloat(d.latest)/10)/irtPerUsdt})).filter(d=>d.id&&d.price);
+    }
+    case 'wallex': {
+      const res=await fetchWithRetry('https://crypto-proxy.mahditavakoli7777.workers.dev/wallex/v1/markets',8000,1);
+      if(!res) return null;
+      const symbols=(await res.json())?.result?.symbols;
+      if(!symbols) return null;
+      const usdtTmn=parseFloat(symbols['USDTTMN']?.stats?.lastPrice);
+      if(!usdtTmn) return null;
+      return Object.entries(symbols).map(([sym,d])=>({id:symToIdTmn[sym],price:parseFloat(d?.stats?.lastPrice)/usdtTmn})).filter(d=>d.id&&d.price);
+    }
+    default: return null;
+  }
+}
+
+async function fetchPrices() {
+  const coinEntries = Object.entries(COIN_META);
+
+  function applyPrices(data) {
+    data.forEach(({ id, price }) => {
+      const prev = prices[id];
+      prices[id] = price;
+      updateLivePrice(id, price, prev);
+      updateLastCandle(id, price);
+      checkAlerts(id);
+    });
+  }
+
+  // ── Manual source selected ──
+  if (selectedPriceSource !== 'auto') {
+    try {
+      const parsed = await fetchFromSource(selectedPriceSource, coinEntries);
+      if (parsed?.length) {
+        applyPrices(parsed);
+        const labels = { binance:'Binance', cryptocompare:'CryptoCompare', bybit:'Bybit', kucoin:'KuCoin', okx:'OKX', gateio:'Gate.io', mexc:'MEXC', coincap:'CoinCap', coingecko:'CoinGecko', nobitex:'نوبیتکس', wallex:'والکس' };
+        setApiStatus('ok', (labels[selectedPriceSource] || selectedPriceSource) + ' ●');
+        return;
+      }
+      setApiStatus('err', `${selectedPriceSource} — خطا`);
+    } catch(e) {
+      setApiStatus('err', `${selectedPriceSource} — خطا`);
+    }
+    return;
+  }
+
+  // ── Auto: try all sources in order ──
+  const autoOrder = ['binance','cryptocompare','bybit','kucoin','okx','gateio','mexc','coincap','nobitex','wallex','coingecko'];
+  const labels = { binance:'Binance', cryptocompare:'CryptoCompare', bybit:'Bybit', kucoin:'KuCoin', okx:'OKX', gateio:'Gate.io', mexc:'MEXC', coincap:'CoinCap', coingecko:'CoinGecko', nobitex:'نوبیتکس', wallex:'والکس' };
+
+  for (const src of autoOrder) {
+    try {
+      const parsed = await fetchFromSource(src, coinEntries);
+      if (parsed?.length) {
+        applyPrices(parsed);
+        setApiStatus('ok', (labels[src] || src) + ' ●');
+        return;
+      }
+    } catch(e) {}
+  }
+
+  setApiStatus('err', currentLang === 'fa' ? 'خطا — بررسی اتصال' : 'Error — check connection');
+}
+
+function startPolling() { fetchPrices(); if (fetchInterval) clearInterval(fetchInterval); fetchInterval = setInterval(fetchPrices, 30000); }
+
+function setApiStatus(type, text) {
+  const el = document.getElementById('api-status');
+  if (el) { el.textContent = text; el.className = type; }
+  const dot = document.getElementById('pulse-dot');
+  if (dot) dot.className = 'pulse' + (type === 'ok' ? '' : ' err');
+  const footer = document.getElementById('footer-api-status');
+  if (footer) footer.textContent = text;
+}
+
+// ═══════════════════════════════════════════════
+// LIVE PRICE UI
+// ═══════════════════════════════════════════════
+function buildLivePrices() {
+  // Show only top 10 base coins in live ticker
+  const baseIds = ['bitcoin','ethereum','binancecoin','solana','ripple','dogecoin','cardano','avalanche-2','litecoin','polkadot'];
+  document.getElementById('live-prices').innerHTML = baseIds.map(id => {
+    const m = COIN_META[id];
+    if (!m) return '';
+    return `<div class="live-item" onclick="switchChartCoin('${id}')" title="${m.name || m.base}">
+      <span class="live-pair">${m.base}/USDT</span>
+      <span class="live-price" id="live-${id}">—</span>
+    </div>`;
+  }).join('');
+}
+
+function switchChartCoin(geckoId) {
+  currentChartCoin = geckoId;
+  const sel = document.getElementById('chart-coin-select');
+  sel.value = geckoId;
+  loadChart(geckoId, currentTf);
+}
+
+function updateLivePrice(geckoId, price, prev) {
+  const el = document.getElementById('live-' + geckoId);
+  if (!el) return;
+  const dir = prev ? (price > prev ? 'flash-green' : price < prev ? 'flash-red' : '') : '';
+  el.textContent = formatPrice(price, geckoId);
+  if (dir) { el.className = 'live-price ' + dir; setTimeout(() => el.className = 'live-price', 500); }
+  // Only update price blocks in existing alert cards (lightweight, no full re-render)
+  updateAlertPriceDisplay(geckoId, price);
+}
+
+function updateAlertPriceDisplay(geckoId, price) {
+  // Update price blocks in rendered alert cards without full re-render
+  // This is a lightweight alternative to calling renderAlerts() on every tick
+  // A full renderAlerts() is called after alert state changes (save/delete/toggle)
+}
+
+// ═══════════════════════════════════════════════
+// ALERT CHECKING
+// ═══════════════════════════════════════════════
+function checkAlerts(geckoId) {
+  const price = prices[geckoId];
+  if (!price) return;
+  alerts.forEach(a => {
+    if (a.geckoId !== geckoId || !a.active) return;
+    const triggered = a.dir === 'above' ? price >= a.target : price <= a.target;
+    if (triggered && !notifiedIds.has(a.id)) {
+      notifiedIds.add(a.id);
+      const meta = COIN_META[geckoId];
+      const dirText = a.dir === 'above' ? (currentLang === 'fa' ? 'بالاتر از' : 'above') : (currentLang === 'fa' ? 'پایین‌تر از' : 'below');
+      const title = `${meta?.base || geckoId}/USDT ${t('alertTitle')}`;
+      const body = `${t('alertBody')} ${formatPrice(price, geckoId)} — ${dirText} ${formatPrice(a.target, geckoId)}`;
+      const tgMsg = `🔔 <b>CryptoAlert</b>\n${meta?.base || geckoId}/USDT\nقیمت فعلی: ${formatPrice(price, geckoId)}\nقیمت هدف: ${formatPrice(a.target, geckoId)}\nجهت: ${dirText}`;
+
+      // always show in-app toast
+      showToast(`🔔 ${title} — ${body}`, 'alert');
+
+      const notif = a.notif || { browser: true };
+
+      // Browser push
+      if ((notif.browser !== false) && Notification.permission === 'granted')
+        new Notification(title, { body });
+
+      // Email
+      if (notif.email && emailCfg)
+        sendAlertEmail(title, body, meta?.base || geckoId, price, a.target, geckoId);
+
+      // Telegram
+      if (notif.telegram && tgCfg)
+        sendTelegram(tgMsg);
+
+      // Discord
+      if (notif.discord && discordCfg)
+        sendDiscord(`**${title}**\n${body}`, meta?.base || geckoId, formatPrice(price, geckoId), formatPrice(a.target, geckoId));
+
+      // SMS
+      if (notif.sms && smsCfg)
+        sendSMS(`CryptoAlert: ${meta?.base || geckoId} ${dirText} ${formatPrice(a.target, geckoId)} | قیمت: ${formatPrice(price, geckoId)}`);
+
+      a.active = false;
+      a.triggeredAt = new Date().toISOString();
+      saveAlerts(); renderAlerts();
+      redrawAlertLines(geckoId);
+    }
+  });
+}
+
+function saveAlerts() { localStorage.setItem('crypto_alerts', JSON.stringify(alerts)); }
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openModal(alert) {
+  editingId = alert ? alert.id : null;
+  alertEmailOn = alert ? (alert.emailOn || false) : false;
+  alertReminderOn = alert ? (alert.reminderOn || false) : false;
+  if (alert) {
+    document.getElementById('m-pair').value = alert.geckoId;
+    const meta = COIN_META[alert.geckoId];
+    document.getElementById('coin-search-input').value = meta ? `${meta.base} — ${meta.name || meta.base}` : alert.geckoId;
+    document.getElementById('m-price').value = alert.target;
+    selectDir(alert.dir);
+    document.getElementById('modal-title').textContent = t('alertEdit');
+  } else {
+    document.getElementById('m-pair').value = currentChartCoin;
+    const meta = COIN_META[currentChartCoin];
+    document.getElementById('coin-search-input').value = meta ? `${meta.base} — ${meta.name || meta.base}` : currentChartCoin;
+    document.getElementById('m-price').value = '';
+    selectDir('above');
+    document.getElementById('modal-title').textContent = t('alertNew');
+  }
+  updatePairPreview();
+  openModalNotifState(alert);
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-price').focus(), 200);
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); editingId = null; closeCoinDropdown(); }
+
+function selectDir(d) {
+  selectedDir = d;
+  document.getElementById('dir-above').className = 'dir-btn' + (d === 'above' ? ' sel-above' : '');
+  document.getElementById('dir-below').className = 'dir-btn' + (d === 'below' ? ' sel-below' : '');
+  document.getElementById('dir-above').textContent = t('above');
+  document.getElementById('dir-below').textContent = t('below');
+}
+
+function updatePairPreview() {
+  const val = document.getElementById('m-pair').value;
+  const price = prices[val];
+  const meta = COIN_META[val];
+  document.getElementById('pair-preview').textContent = meta && price
+    ? `${meta.base}/USDT — ${currentLang === 'fa' ? 'قیمت فعلی' : 'Current'}: ${formatPrice(price, val)}`
+    : '';
+  if (price) document.getElementById('m-price').placeholder = formatPrice(price, val).replace('$', '');
+}
+
+function toggleEmailForAlert() {
+  if (!emailCfg) { openEmailSettings(); return; }
+  alertEmailOn = !alertEmailOn; updateToggleUI('toggle-email', alertEmailOn);
+}
+function toggleReminderForAlert() {
+  if (!emailCfg) { openEmailSettings(); return; }
+  alertReminderOn = !alertReminderOn; updateToggleUI('toggle-reminder', alertReminderOn);
+}
+function updateToggleUI(id, on) {
+  document.getElementById(id).className = 'toggle' + (on ? ' on' : '');
+}
+
+function saveAlert() {
+  const geckoId = document.getElementById('m-pair').value;
+  const target = parseFloat(document.getElementById('m-price').value);
+  if (!geckoId || isNaN(target) || target <= 0) { showToast(t('invalidPrice'), 'error'); return; }
+  const notif = getModalNotifState();
+  if (editingId) {
+    const idx = alerts.findIndex(a => a.id === editingId);
+    if (idx >= 0) {
+      alerts[idx] = { ...alerts[idx], geckoId, target, dir: selectedDir, active: true, notif, emailOn: notif.email, reminderOn: alertReminderOn, reminderSent: false };
+      notifiedIds.delete(editingId);
+    }
+    showToast(t('alertEdited'), 'success');
+  } else {
+    alerts.push({ id: Date.now().toString(), geckoId, target, dir: selectedDir, active: true, notif, emailOn: notif.email, reminderOn: alertReminderOn, reminderSent: false, createdAt: new Date().toISOString() });
+    showToast(t('alertAdded'), 'success');
+  }
+  saveAlerts(); renderAlerts(); closeModal();
+  redrawAlertLines(geckoId);
+}
+
+function deleteAlert(id) {
+  const a = alerts.find(x => x.id === id);
+  alerts = alerts.filter(x => x.id !== id);
+  notifiedIds.delete(id);
+  saveAlerts(); renderAlerts();
+  if (a) redrawAlertLines(a.geckoId);
+  showToast(t('deleted'), 'error');
+}
+
+function toggleAlert(id) {
+  const a = alerts.find(x => x.id === id);
+  if (a) { a.active = !a.active; if (a.active) { notifiedIds.delete(id); a.reminderSent = false; } saveAlerts(); renderAlerts(); redrawAlertLines(a.geckoId); }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function renderAlerts() {
+  const list = document.getElementById('alerts-list');
+  document.getElementById('stat-total').textContent = alerts.length;
+  document.getElementById('stat-active').textContent = alerts.filter(a => a.active).length;
+  document.getElementById('stat-triggered').textContent = alerts.filter(a => !a.active).length;
+  document.getElementById('alerts-count').textContent = `${alerts.length} ${t('alertsCount')}`;
+
+  if (!alerts.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">🔕</div><div class="empty-text">${t('noAlerts')}</div><div class="empty-sub">${t('noAlertsSub')}</div></div>`;
+    return;
+  }
+
+  list.innerHTML = alerts.map(a => {
+    const meta = COIN_META[a.geckoId] || { base: a.geckoId, icon: '?', name: a.geckoId };
+    const price = prices[a.geckoId];
+    const diff = price ? price - a.target : null;
+    const pct = price ? (diff / a.target * 100) : null;
+    const wasFired = !a.active;
+    let cardClass = 'alert-card' + (wasFired ? (a.dir === 'above' ? ' triggered-above' : ' triggered-below') : '');
+    let badge = wasFired
+      ? (a.dir === 'above' ? `<span class="badge trig-above">${t('badgeAbove')}</span>` : `<span class="badge trig-below">${t('badgeBelow')}</span>`)
+      : `<span class="badge active">${t('badgeActive')}</span>`;
+    const dirText = a.dir === 'above' ? t('dirAboveFull') : t('dirBelowFull');
+    const diffStr = diff !== null ? `<div class="price-diff ${diff>=0?'pos':'neg'}">${diff>=0?'+':''}${formatPrice(Math.abs(diff),a.geckoId)} (${pct>=0?'+':''}${pct.toFixed(2)}%)</div>` : '';
+    const timeStr = new Date(a.createdAt||Date.now()).toLocaleString(currentLang === 'fa' ? 'fa-IR' : 'en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    let notifBadges = '';
+    const notif = a.notif || {};
+    if (notif.browser !== false) notifBadges += '<span title="Browser" style="font-size:10px">🖥️</span>';
+    if (notif.email || a.emailOn) notifBadges += '<span title="Email" style="font-size:10px;color:#93c5fd">📧</span>';
+    if (notif.telegram) notifBadges += '<span title="Telegram" style="font-size:10px;color:#38bdf8">✈️</span>';
+    if (notif.discord)  notifBadges += '<span title="Discord" style="font-size:10px;color:#818cf8">💬</span>';
+    if (notif.sms)      notifBadges += '<span title="SMS" style="font-size:10px;color:#4ade80">📱</span>';
+    const iconHtml = meta.image
+      ? `<img src="${meta.image}" onerror="this.onerror=null;this.outerHTML='<span>${meta.icon||meta.base.slice(0,2)}</span>'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+      : (meta.icon || meta.base.slice(0,2));
+    return `<div class="${cardClass}">
+      <div class="alert-head">
+        <div class="alert-pair"><div class="pair-icon">${iconHtml}</div>${meta.base}/USDT <span style="display:flex;gap:3px;margin-right:4px">${notifBadges}</span></div>
+        ${badge}
+      </div>
+      <div class="alert-body">
+        <div class="price-block"><div class="price-label">${t('targetPriceLabel')}</div><div class="price-value">${formatPrice(a.target,a.geckoId)}</div></div>
+        <div class="price-block"><div class="price-label">${t('currentPriceLabel')}</div><div class="price-value">${price?formatPrice(price,a.geckoId):'—'}</div>${diffStr}</div>
+      </div>
+      <div class="alert-direction">${dirText}</div>
+      <div class="alert-footer">
+        <div class="alert-time">${timeStr}</div>
+        <div class="alert-actions">
+          <button class="btn btn-ghost btn-sm" onclick="switchChartCoin('${a.geckoId}')">📊</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAlert('${a.id}')">${a.active?t('stop'):t('activate')}</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModal(alerts.find(x=>x.id==='${a.id}'))">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAlert('${a.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+function showToast(msg, type = '') {
+  const c = document.getElementById('toast-container');
+  const t2 = document.createElement('div');
+  t2.className = 'toast ' + type;
+  t2.textContent = msg;
+  c.appendChild(t2);
+  setTimeout(() => { t2.style.opacity='0'; t2.style.transition='opacity 0.3s'; setTimeout(()=>t2.remove(),300); }, 4000);
+}
+
+// ═══════════════════════════════════════════════
+// EMAIL
+// ═══════════════════════════════════════════════
+function initEmailJS() {
+  if (emailCfg?.publicKey) {
+    const tryInit = (n=0) => {
+      if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: emailCfg.publicKey });
+      else if (n < 20) setTimeout(() => tryInit(n+1), 250);
+    };
+    tryInit();
+    updateEmailBanner();
+  }
+}
+
+async function sendAlertEmail(subject, message, coinBase, currentPrice, targetPrice, geckoId) {
+  if (!emailCfg || typeof emailjs === 'undefined') return;
+  emailjs.init({ publicKey: emailCfg.publicKey });
+  try {
+    await emailjs.send(emailCfg.serviceId, emailCfg.templateId, {
+      to_email: emailCfg.toEmail, subject, message, coin: coinBase,
+      current_price: formatPrice(currentPrice, geckoId), target_price: formatPrice(targetPrice, geckoId),
+    });
+    showToast(t('emailSent'), 'success');
+  } catch(e) { showToast(t('emailError'), 'error'); }
+}
+
+function openEmailSettings() {
+  if (emailCfg) {
+    document.getElementById('ej-public-key').value = emailCfg.publicKey || '';
+    document.getElementById('ej-service-id').value = emailCfg.serviceId || '';
+    document.getElementById('ej-template-id').value = emailCfg.templateId || '';
+    document.getElementById('ej-to-email').value = emailCfg.toEmail || '';
+  }
+  document.getElementById('email-modal').classList.add('open');
+}
+function closeEmailModal() { document.getElementById('email-modal').classList.remove('open'); }
+
+function saveEmailSettings() {
+  const publicKey = document.getElementById('ej-public-key').value.trim();
+  const serviceId = document.getElementById('ej-service-id').value.trim();
+  const templateId = document.getElementById('ej-template-id').value.trim();
+  const toEmail = document.getElementById('ej-to-email').value.trim();
+  if (!publicKey||!serviceId||!templateId||!toEmail) { showToast(t('emailFillAll'),'error'); return; }
+  emailCfg = { publicKey, serviceId, templateId, toEmail };
+  localStorage.setItem('email_cfg', JSON.stringify(emailCfg));
+  emailjs.init({ publicKey });
+  updateEmailBanner(); closeEmailModal(); showToast(t('emailSaved'), 'success');
+}
+
+async function testEmailSettings() {
+  const publicKey=document.getElementById('ej-public-key').value.trim();
+  const serviceId=document.getElementById('ej-service-id').value.trim();
+  const templateId=document.getElementById('ej-template-id').value.trim();
+  const toEmail=document.getElementById('ej-to-email').value.trim();
+  if (!publicKey||!serviceId||!templateId||!toEmail) { showToast(t('emailFillAll'),'error'); return; }
+  showToast(t('emailSending'),'info');
+  try {
+    emailjs.init({ publicKey });
+    await emailjs.send(serviceId, templateId, { to_email:toEmail, subject:'✅ CryptoAlert Test', message:'Connection successful!', coin:'BTC', current_price:'$65,000', target_price:'$70,000' });
+    showToast(t('emailTestSent'),'success');
+  } catch(e) { showToast('Error: '+(e.text||e.message),'error'); }
+}
+
+function updateEmailBanner() {
+  const banner = document.getElementById('email-banner-footer');
+  const txt = document.getElementById('email-banner-text');
+  if (!banner || !txt) return;
+  if (emailCfg?.toEmail) {
+    banner.className = 'configured';
+    txt.textContent = t('emailBannerOn') + emailCfg.toEmail;
+  } else {
+    banner.className = '';
+    txt.textContent = t('emailBannerOff');
+  }
+  refreshNotifChannelUI();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+// ── SERVICE WORKER REGISTRATION ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[PWA] SW registered:', reg.scope))
+      .catch(err => console.warn('[PWA] SW registration failed:', err));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Migrate old alerts format
+  alerts = alerts.map(a => {
+    if (a.pair && !a.geckoId) {
+      const entry = Object.entries(COIN_META).find(([,m]) => m.sym === a.pair);
+      a.geckoId = entry ? entry[0] : 'bitcoin';
+      delete a.pair;
+    }
+    return a;
+  });
+  saveAlerts();
+
+  // Button bindings
+  document.getElementById('add-btn').onclick = () => openModal(null);
+  document.getElementById('settings-btn').onclick = openEmailSettings;
+  document.getElementById('refresh-btn').onclick = () => { showToast(t('refresh'),''); fetchPrices(); };
+  document.getElementById('lang-btn').onclick = toggleLang;
+
+  // Close chart coin dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('chart-coin-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('chart-coin-dropdown')?.classList.remove('open');
+    }
+  });
+
+  // Modal backdrop close
+  document.getElementById('modal').onclick = function(e) { if (e.target === this) closeModal(); };
+  document.getElementById('email-modal').onclick = function(e) { if (e.target === this) closeEmailModal(); };
+  document.getElementById('notif-modal').onclick = function(e) { if (e.target === this) closeNotifChannels(); };
+
+  // Apply language & theme
+  applyI18n();
+  applyTheme();
+  initEmailJS();
+  refreshNotifChannelUI();
+  const psSel = document.getElementById('price-source-select');
+  if (psSel) psSel.value = selectedPriceSource;
+  buildLivePrices();
+  renderAlerts();
+
+  // Load coins (async)
+  loadTop300Coins().then(() => { filterCoins(); renderChartCoinList(allCoins.slice(0,200)); });
+
+  // Init chart after LWC library ready
+  waitForLWC(() => {
+    initChart();
+    loadChart(currentChartCoin, currentTf);
+    fetchPrices().finally(() => connectKraken());
+  });
+});
+</script>
+</body>
+</html>
