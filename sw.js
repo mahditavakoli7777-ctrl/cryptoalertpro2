@@ -1,5 +1,5 @@
 // CryptoAlert Service Worker - v1.0
-const CACHE_NAME = 'cryptoalert-v1';
+const CACHE_NAME = 'cryptoalert-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
